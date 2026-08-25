@@ -2,6 +2,17 @@
 
 工作台是什么、怎么装、能做什么，见 [README](../README.md)；编译/烧录的一切见 [mdk-build-flash.md](mdk-build-flash.md)。本文只讲**装好之后**的事：preset 与会话、技能摆放、更新与卸载。
 
+## 文档分工
+
+| 需要回答的问题 | 文档 |
+| --- | --- |
+| 这个项目适不适合当前任务、如何第一次跑通 | [README](../README.md) |
+| preset、技能放置、更新与卸载 | 本文 |
+| 工程选择、镜像定位与烧录后端 | [MDK 编译/烧录 SOP](mdk-build-flash.md) |
+| 工作台的分层、边界与扩展 | [架构说明](architecture.md) |
+| DSH host / isolate realm 与组合维护 | [DSH 集成说明](dsh-integration.md) |
+
+
 ## Preset 与会话
 
 - 工作台是一个 DSH **agent preset**（会话级组合）。新建会话时在 preset 菜单选「嵌入式开发工作台」，选一次即记住为默认，之后的新会话自动沿用，直到你改选其它 preset；想切回来，菜单里再选一次即可，无需重装。

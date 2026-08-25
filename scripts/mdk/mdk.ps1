@@ -174,12 +174,20 @@ if ($Action -eq 'flash') {
 }
 
 # --- 编译/重编译：UV4 + 日志解析 ---
-$log = Join-Path $logDir ("uv4-{0}.log" -f $Action)
-Remove-Item $log -Force -ErrorAction SilentlyContinue   # 先删旧日志，防上一次结果被误读为本次结论
+# UV4 的 -o 按“相对工程目录的文件名”解析——传入绝对路径时目录部分会被丢弃，
+# 日志实际落在工程目录下的同名文件（实测行为，见 SOP 已知坑 4）。
+# 因此这里只向 -o 传裸文件名、从工程目录读取结果，再把日志归档到集中 logs\
+# 目录（跨重装保留故障现场）。
+$logName  = "uv4-{0}.log" -f $Action
+$projDir  = Split-Path -Parent $ProjectPath
+$log      = Join-Path $projDir $logName    # UV4 实际写日志的位置（工程目录）
+$archive  = Join-Path $logDir $logName     # 集中归档位置
+Remove-Item $log -Force -ErrorAction SilentlyContinue     # 先删两处旧日志，防上一次结果被误读为本次结论
+Remove-Item $archive -Force -ErrorAction SilentlyContinue
 $startedAt = Get-Date
 switch ($Action) {
-  'build'   { & $Uv4Path -b $ProjectPath -j0 -o $log }
-  'rebuild' { & $Uv4Path -r $ProjectPath -j0 -o $log }
+  'build'   { & $Uv4Path -b $ProjectPath -j0 -o $logName }
+  'rebuild' { & $Uv4Path -r $ProjectPath -j0 -o $logName }
 }
 
 # UV4 退出码不可靠；编译以"本次新生成的日志"中的 Error/Warning 计数为准。
@@ -206,9 +214,13 @@ if (-not $freshLog) {
 if (-not $parsed) {
   Write-Output "$verb 结果不确定：日志中未找到构建结束摘要（N Error(s)），构建可能被中断。"
   Write-Output "日志：$log"
+  Write-Output "归档：$archive"
   exit 3
 }
 
+if (Test-Path $log) { Copy-Item $log $archive -Force }   # 归档到集中日志目录
+
 Write-Output "$verb 完成：$errors 个错误，$warnings 个警告"
 Write-Output "日志：$log"
+Write-Output "归档：$archive"
 if ($errors -eq 0) { exit 0 } else { exit 1 }

@@ -83,15 +83,22 @@ function Invoke-Flash {
 # ---- 各后端实现 ----
 
 # Keil：用工程里配好的调试器下载，不需要镜像文件。
-# UV4 -f 同样支持 -o 落日志；退出码不可靠，成败以日志关键字为准。
+# UV4 -f 同样支持 -o 落日志；但 -o 按“相对工程目录的文件名”解析——传入绝对
+# 路径时目录部分被丢弃，日志实际落在工程目录。所以传裸文件名、读工程目录、
+# 再归档到集中 logs\ 目录。UV4 退出码不可靠，成败以日志关键字为准。
 function Invoke-FlashKeil {
   param([string]$ProjectFile, [string]$Image, [string]$ImageDir = '', [string]$FlashAddress = '')
   Write-Output "烧录（Keil -f，走工程配置的调试器）"
-  $log = Join-Path $logDir 'uv4-flash.log'
-  Remove-Item $log -Force -ErrorAction SilentlyContinue   # 防旧日志误判
+  $logName = 'uv4-flash.log'
+  $projDir = Split-Path -Parent $ProjectFile
+  $log     = Join-Path $projDir $logName    # UV4 实际写日志的位置（工程目录）
+  $archive = Join-Path $logDir $logName     # 集中归档位置
+  Remove-Item $log -Force -ErrorAction SilentlyContinue     # 防旧日志误判
+  Remove-Item $archive -Force -ErrorAction SilentlyContinue
   $startedAt = Get-Date
-  & $Uv4Path -f $ProjectFile -j0 -o $log
+  & $Uv4Path -f $ProjectFile -j0 -o $logName
 
+  if (Test-Path $log) { Copy-Item $log $archive -Force }   # 归档到集中日志目录
   $freshLog = (Test-Path $log) -and ((Get-Item $log).LastWriteTime -ge $startedAt)
   $content = $null
   if ($freshLog) { $content = Get-Content $log -Raw -ErrorAction SilentlyContinue }
@@ -106,6 +113,7 @@ function Invoke-FlashKeil {
   if ($content -and ($content -match $okPat) -and ($failLines.Count -eq 0)) {
     Write-Output '烧录完成：校验通过（Verify OK）'
     Write-Output "日志：$log"
+    Write-Output "归档：$archive"
     return
   }
 
@@ -117,6 +125,7 @@ function Invoke-FlashKeil {
   Write-Output '烧录失败。'
   foreach ($l in $failLines) { Write-Output "  $l" }
   Write-Output "日志：$log"
+  Write-Output "归档：$archive"
   exit 1
 }
 

@@ -1,37 +1,26 @@
-# The `standard` agent preset: the full coding agent, mounted once per process.
-#
-# This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
-# standing scope; every session naming it joins by scope parentage, so the
-# tools and prompt sections registered here cover each joined agent while a
-# session's own state stays keyed per Session/Agent inside the plugins. The
-# host composition (`base.cordis.yml` + `web.cordis.yml`) keeps everything a
-# preset must not own: the registries themselves, the sandbox and approval
-# stack, persistence, and the model route.
-#
-# A service row here MUST sit inside a group carrying an `isolate` realm.
-# Without one it publishes into the root realm, where it is process-global —
-# another preset publishing the same name collides, and a host reader would
-# resolve one preset's instance for every session; `dsh-agent-presets` rejects
-# that at mount. `true` means an entry-local realm: this standing mount's own
-# private instance, apart from every other preset's. (A shared label does NOT
-# pool instances — `provide()` throws on the second registration under the
-# same realm symbol; labels join REALMS, and are not what this file needs.)
+# DSH Embedded Workbench 的 agent-plane 组合。
+# Host registry / isolate realm 的设计理由见 docs/dsh-integration.md；
+# 本文件保留运行所需的声明与最短的维护提示。
 
 # ── identity ────────────────────────────────────────────────────────────────
 
-# The preset's own persona, shadowing the deployment default for this agent.
-# `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
+# 覆盖默认 persona；`{{model}}` 与 `{{cwd}}` 由当前 agent/session 解析。
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: >-
-      You are an embedded firmware engineering workbench powered by the {{model}} model. Your working directory is {{cwd}}.
+    text: |
+      你是一个嵌入式固件工程工作台，由 {{model}} 模型驱动，工作目录为 {{cwd}}。
 
-      You specialize in Cortex-M (STM32) firmware design and review. Load the `arm-cortex-expert` skill for firmware design/review (DMA, ISR, cache, RTOS, LwIP). Load the `embedded-test-engineer` skill when designing verification: test layering, seams and test doubles, measurement data replay regression, tolerance policy, or HIL coverage planning. Load the `embedded-protocol-designer` skill when authoring or reviewing a device communication protocol (frame formats, command space, state gating, timeout/retry rules, version freezes).
+      工作方式：
+      - 固件设计或评审（DMA、ISR、Cache、RTOS、LwIP）加载 `arm-cortex-expert`。
+      - 验证策略、测试接缝、数据回放或 HIL 规划加载 `embedded-test-engineer`。
+      - 设备通信协议的设计或评审加载 `embedded-protocol-designer`。
+      - 项目代码、.ioc、链接脚本与厂商资料优先于技能参考；工具结果是线索，不是权威结论。
+      - 烧录前确认工程、Target、MCU 和后端；长时间编译放到后台任务。
 
-      To build or flash a Keil MDK project, run the wrapper script:
+      编译或烧录 Keil MDK 工程时，运行：
       `pwsh -File "$env:DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.ps1" build|rebuild|flash`
-      Run long builds in the background. Configure the UV4 path and project file in `mdk.config.ps1` next to that script.
+      UV4 路径与工程文件可在同目录的 `mdk.config.ps1` 配置。
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'
@@ -40,13 +29,7 @@
 
 # ── shell ───────────────────────────────────────────────────────────────────
 
-# `shell-env` stays in the HOST composition: `apps/cli/src/web.ts` injects it to
-# publish `DSH_WEB_URL`/`DSH_WEB_MODE`, and a host row that injects a service is
-# the criterion for host-plane ownership — injection resolves before any session
-# exists, so there is no agent to key by. Behind a preset realm those variables
-# never reached the model's shell at all. Both shell tools consume the host
-# registry from here; their executors (`bash-sandbox`/`pwsh-sandbox`) are
-# host-plane too.
+# Shell executor 与环境变量由 host 提供；此处仅暴露匹配当前平台的 shell 工具。
 - id: tool-bash
   name: '@deepseek-ai/dsh-tool-bash'
   disabled: !!js process.platform === 'win32'
@@ -57,8 +40,7 @@
 
 # ── filesystem ──────────────────────────────────────────────────────────────
 
-# Both register into the host `tools` registry and provide nothing, so
-# they need no realm. The `fs` service and its policy stay in the host.
+# 文件系统服务与权限策略归 host；preset 只启用模型侧工具。
 - id: tool-fs
   name: '@deepseek-ai/dsh-tool-fs'
 
@@ -69,23 +51,13 @@
 
 # ── background jobs ────────────────────────────────────────────────────────
 
-# Only the model-facing controls. The task REGISTRY stays on the host plane:
-# its producers sit outside any realm this file could put it in — `tool-bash`
-# above resolves it with `ctx.get`, and an entry-local realm here is invisible
-# to every sibling row, so `run_in_background` would answer "background jobs
-# unavailable" while these controls sat in the catalog. The registry is keyed by
-# owning agent anyway, so one host instance serves every session. What a preset
-# chooses is whether its agent can collect and stop background work at all.
+# 后台任务注册表归 host；此处启用 agent 对任务的查看与控制。
 - id: tool-jobs
   name: '@deepseek-ai/dsh-tool-jobs'
 
 # ── skills ──────────────────────────────────────────────────────────────────
 
-# The skill REGISTRY lives in the host composition and is layered per scope:
-# these rows register into THIS preset's layer of it, so they need no realm.
-# `skill-filesystem` contributes local-root discovery for agents on this preset, and
-# `tool-skill` gives them the catalog and loader; the merged catalog also
-# carries whatever the deployment registered globally (repository plugins).
+# 技能注册表按 preset scope 分层；本工作台把本地 skills/ 加入其一层。
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
   config:
@@ -95,26 +67,19 @@
 - id: tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
 
-# The embedded workbench's own slash commands (/build /rebuild /flash), loaded
-# from a local plugin file relative to this preset's directory.
+# 本工作台的 /build 命令插件，路径相对 preset 根目录。
 - id: mdk-commands
   name: './plugins/mdk/mdk-commands.mjs'
 
 # ── goals ───────────────────────────────────────────────────────────────────
 
-# Only the model-facing tool. The goal SERVICE, its session driver, and the
-# `/goal` command stay on the host plane: the Gateway serves the goal domain as
-# Remote endpoints whose receiver comes from a generated descriptor, so it
-# resolves `goals` on the host and an entry-local realm here would hide it. The
-# registry is keyed by session anyway, so one host instance serves every
-# session. What a preset chooses is whether its agent can call the goal tool.
+# Goal 服务与 session driver 归 host；preset 只决定 agent 是否可调用目标工具。
 - id: tool-goal
   name: '@deepseek-ai/dsh-tool-goal'
 
 # ── plan mode ───────────────────────────────────────────────────────────────
 
-# Plan state is per-agent by nature, so an entry-local realm is not a
-# workaround here — it is the correct lifetime.
+# Plan state 是每个 agent 独立的状态，放在 entry-local realm。
 - id: planning
   name: cordis:group
   group: true
@@ -139,15 +104,7 @@
 
 # ── compaction ──────────────────────────────────────────────────────────────
 
-# `compaction-basic` reads `toolResultPrune` through `ctx.get`, so the pruner must
-# share this realm rather than sit outside it.
-#
-# `tokenMeter` is deliberately NOT in this realm: the meter stays on the HOST
-# plane, and the rows here resolve that one instance. It takes no configuration,
-# keys every fold by Session, and owns the context-meter projection units the
-# browser reads for every session — behind a realm those units would come and go
-# with whichever presets happen to be mounted. What a preset chooses is whether
-# its agent compacts at all, which is `compaction-basic` below.
+# 压缩器与 tool-result pruner 需要共享 per-agent realm；token meter 保持在 host。
 - id: compaction
   name: cordis:group
   group: true
@@ -170,21 +127,7 @@
 
 # ── delegation and workflows ────────────────────────────────────────────────
 
-# The `subagents` registry and its spawn/fork backends live in the HOST
-# composition: the registry is a process singleton whose cross-session queries
-# the api-proxy serves to the browser, and a provider name may only be
-# registered once. This preset contributes the delegation TOOLS, which resolve
-# that host registry.
-#
-# `workflows` is different — nothing outside an agent reads it — so every row
-# that reaches it shares one entry-local realm here, and a consumer left
-# outside would resolve a host registry this preset does not populate.
-#
-# `tool-subagent-report` is host-plane for the same reason as the registry,
-# not because a preset may not want it: it registers a CONTINUABLE SETUP on
-# that singleton rather than a tool this agent calls, and the setup list is
-# not scope-aware — one copy per mounted preset means every child gets
-# `report` registered once per live session, which throws on the second.
+# subagent provider/registry 归 host；workflow engine 属于 agent，因此隔离。
 - id: delegation
   name: cordis:group
   group: true
@@ -211,10 +154,8 @@
         toolName: subagent_fork
         backgroundMode: continuable
 
-    # Production dsh does not install these optional providers. Install the
-    # matching Bundle in this Profile and restart the Host, then copy this
-    # preset and remove `disabled` from the matching tool row. Host availability
-    # alone grants no tool.
+    # 默认未安装这些 provider；安装对应 Bundle 并重启 host 后，复制 preset 再移除
+    # 相应 disabled。host 可用不等于向 agent 暴露工具。
     - id: tool-subagent-codex
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: true
@@ -257,8 +198,7 @@
   config:
     allowParallelInProgress: true
 
-# The `web` service and its search provider stay in the host composition; only
-# the model-facing tool is per-session.
+# Web 服务与检索 provider 归 host；此处启用模型侧 Web 工具。
 - id: tool-web
   name: '@deepseek-ai/dsh-tool-web'
   config:
