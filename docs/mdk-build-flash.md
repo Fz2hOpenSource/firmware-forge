@@ -67,12 +67,13 @@ pwsh -File "$env:DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.ps1" flash
 | rebuild | `UV4.exe -r <proj> -j0 -o uv4-rebuild.log` | 同上 |
 | flash | 分发到烧录后端（见下） | keil 后端同理（`uv4-flash.log`） |
 
-## 四个已知坑
+## 五个已知坑
 
 1. **UV4 退出码不可靠**：即使编译有 Error，UV4 也可能返回 0。所以编译成败以日志里的 `N Error(s)` / `N Warning(s)` 计数为准，不看退出码。
 2. **编译慢**：几十秒到几分钟。slash 命令会同步等待；AI 侧应把 build 放后台任务跑，避免阻塞。
 3. **Keil 烧录默认完全静默**：`-j0` 隐藏窗口且不回传结果。现在 flash 同样写日志 `uv4-flash.log`，成功判据为 `Verify OK / Programming Done / Load finished / Application running` 且无失败关键字；出现 `Error / failed / cannot / No Algorithm / Verify failed` 即失败并列出相关行，非零退出。
 4. **UV4 的 `-o` 忽略绝对路径中的目录部分**：`-o C:\...\logs\uv4-build.log` 实际会把日志写到 `<工程目录>\uv4-build.log`。症状是编译本身每次都正常执行，但包装脚本在集中日志目录永远等不到文件，误报"结果不确定"。修法即上文的两段式：只向 `-o` 传裸文件名、从工程目录读取、解析后归档。
+5. **UV4.exe 是 GUI 子系统进程，shell 的 `&` 不会等它结束**：脚本启动 UV4 后会立即继续往下跑——此刻 `$LASTEXITCODE` 是空的、日志也还没生成，必然误报"结果不确定"。这正是 Keil 文档要求用 `START /WAIT` 的原因。包装脚本现改用 `Start-Process -Wait` 真正等待结束（`-WaitTimeoutSec` 可调，默认 900 秒；超时杀进程并按"结果不确定"退出，防许可证弹窗挂死会话）。
 
 ## 烧录后端（keil / stlink / dap / jlink）
 

@@ -20,6 +20,7 @@ param(
   [string]$Image = '',
   [string]$FlashAddress = '',
   [int]$SearchDepth = 6,
+  [int]$WaitTimeoutSec = 900,
   [switch]$WhatIf
 )
 
@@ -185,10 +186,19 @@ $archive  = Join-Path $logDir $logName     # 集中归档位置
 Remove-Item $log -Force -ErrorAction SilentlyContinue     # 先删两处旧日志，防上一次结果被误读为本次结论
 Remove-Item $archive -Force -ErrorAction SilentlyContinue
 $startedAt = Get-Date
-switch ($Action) {
-  'build'   { & $Uv4Path -b $ProjectPath -j0 -o $logName }
-  'rebuild' { & $Uv4Path -r $ProjectPath -j0 -o $logName }
+# UV4.exe 是 GUI 子系统进程：PowerShell 的 & 启动后不等它结束（$LASTEXITCODE 为空、
+# 脚本提前判定"未生成日志"）。必须用 Start-Process -Wait 真正等待；超时兜底防
+# 许可证弹窗等意外挂死会话（见 SOP 已知坑 5）。
+$uv4Verb = if ($Action -eq 'build') { '-b' } else { '-r' }
+$proc = Start-Process -FilePath $Uv4Path `
+  -ArgumentList @($uv4Verb, ('"{0}"' -f $ProjectPath), '-j0', '-o', ('"{0}"' -f $logName)) `
+  -PassThru -WindowStyle Hidden
+if (-not $proc.WaitForExit($WaitTimeoutSec * 1000)) {
+  try { $proc.Kill() } catch { }
+  Write-Output "$verb 结果不确定：等待 UV4 超时（$WaitTimeoutSec 秒）。请检查 UV4 是否被许可证弹窗或工程占用阻塞。"
+  exit 3
 }
+$uv4Exit = $proc.ExitCode
 
 # UV4 退出码不可靠；编译以"本次新生成的日志"中的 Error/Warning 计数为准。
 # 日志缺失、非本次生成、或无结束摘要时，一律按"结果不确定"处理并返回非零退出码。
@@ -208,7 +218,7 @@ switch ($Action) {
 }
 
 if (-not $freshLog) {
-  Write-Output "$verb 结果不确定：UV4 未生成本次日志（exit=$LASTEXITCODE）。请检查 UV4 是否实际启动、许可证弹窗或工程占用。"
+  Write-Output "$verb 结果不确定：UV4 已退出（exit=$uv4Exit）但未生成本次日志。请确认工程目录可写，或联系维护者检查 -o 行为。"
   exit 3
 }
 if (-not $parsed) {

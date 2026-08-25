@@ -96,7 +96,16 @@ function Invoke-FlashKeil {
   Remove-Item $log -Force -ErrorAction SilentlyContinue     # 防旧日志误判
   Remove-Item $archive -Force -ErrorAction SilentlyContinue
   $startedAt = Get-Date
-  & $Uv4Path -f $ProjectFile -j0 -o $logName
+  # 同编译路径（坑 5）：UV4 是 GUI 子系统进程，& 不会等待，必须 Start-Process -Wait
+  $waitSec = if ($WaitTimeoutSec) { $WaitTimeoutSec } else { 900 }
+  $proc = Start-Process -FilePath $Uv4Path `
+    -ArgumentList @('-f', ('"{0}"' -f $ProjectFile), '-j0', '-o', ('"{0}"' -f $logName)) `
+    -PassThru -WindowStyle Hidden
+  if (-not $proc.WaitForExit($waitSec * 1000)) {
+    try { $proc.Kill() } catch { }
+    Write-Output '烧录结果不确定：等待 UV4 超时。请检查许可证弹窗或目标板连接。'
+    exit 3
+  }
 
   if (Test-Path $log) { Copy-Item $log $archive -Force }   # 归档到集中日志目录
   $freshLog = (Test-Path $log) -and ((Get-Item $log).LastWriteTime -ge $startedAt)
