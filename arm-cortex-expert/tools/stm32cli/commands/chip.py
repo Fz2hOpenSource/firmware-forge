@@ -34,13 +34,13 @@ def handle_chip(mcu_name, db_path=None, cache=None):
 def handle_chip_list(family=None, core=None, db_path=None, cache=None):
     if cache is None:
         cache = Cache()
+    db_dir, dbsig = get_db_signature(db_path)
+    if db_dir is None:
+        return {"status": "error", "error": {"code": "DB_NOT_FOUND", "message": "CubeMX database not found"}}
     cache_key = f"chip_list_{dbsig}_{family}_{core}"
     cached = cache.get(cache_key)
     if cached:
         return cached
-    db_dir, dbsig = get_db_signature(db_path)
-    if db_dir is None:
-        return {"status": "error", "error": {"code": "DB_NOT_FOUND", "message": "CubeMX database not found"}}
     families_xml = get_families_xml(db_dir)
     if not families_xml.exists():
         return {"status": "error", "error": {"code": "FAMILIES_NOT_FOUND", "message": "families.xml not found"}}

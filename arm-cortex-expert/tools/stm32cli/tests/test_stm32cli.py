@@ -38,6 +38,26 @@ FAMILIES_XML = """<?xml version="1.0" encoding="utf-8"?>
   </Family>
 </DB>"""
 
+# 最小 MCU XML：让 *_list 命令的 OK 路径（pins/peripherals/dma/interrupts）可测。
+MCU_XML = """<?xml version="1.0" encoding="utf-8"?>
+<Mcu RefName="STM32F407VGTx" Package="LQFP100">
+  <Core>ARM Cortex-M4F</Core>
+  <Frequency>168</Frequency>
+  <Ram>192</Ram>
+  <Flash>1024</Flash>
+  <IONb>82</IONb>
+  <IP InstanceName="SPI1" Name="SPI"/>
+  <Pin Name="PA5" Type="IO" Position="5">
+    <Signal Name="SPI1_SCK"/>
+  </Pin>
+  <DmaController Name="DMA1">
+    <Request Name="SPI1_RX">
+      <Channel Name="DMA1_Stream0_Channel3"/>
+    </Request>
+  </DmaController>
+  <Interrupt Name="SPI1" Position="35" Description="SPI global interrupt"/>
+</Mcu>"""
+
 _counter = {"n": 0}
 
 
@@ -60,6 +80,12 @@ def make_db(root: Path, version: str, freq: int = 168) -> Path:
                                f"<Frequency>{freq}</Frequency>")
     (d / "families.xml").write_text(xml, encoding="utf-8")
     return root / f"DB.{version}"
+
+
+def add_mcu_xml(db_root: Path, name: str = "STM32F407VGTx") -> None:
+    """向夹具库放入最小 MCU XML（get_mcu_xml_path 按 <名字>.xml 查找）。"""
+    p = db_root / "DB.6.10" / "db" / "mcu" / f"{name}.xml"
+    p.write_text(MCU_XML, encoding="utf-8")
 
 
 class VersionOrderTests(unittest.TestCase):
@@ -161,6 +187,78 @@ class ChipHandlerTests(unittest.TestCase):
         self.assertEqual(r2["data"]["freq_mhz"], 200)
 
 
+class ListHandlerRegressionTests(unittest.TestCase):
+    """回归：所有 *_list 处理函数必须先取 DB 签名再构造 cache_key。
+
+    历史 bug：五个 *_list 在赋值前引用 dbsig，每次调用必然 UnboundLocalError，
+    且被顶层兜底吞成 INTERNAL_ERROR。本组测试保证发现型入口（--list）不再回退。
+    """
+
+    def setUp(self):
+        self.d = make_test_dir()
+        make_db(self.d, "6.10")
+        add_mcu_xml(self.d)
+        self.cache_dir = make_test_dir()
+
+    def tearDown(self):
+        drop_dir(self.d)
+        drop_dir(self.cache_dir)
+
+    def _cache(self):
+        return Cache(cache_dir=self.cache_dir)
+
+    def test_chip_list_ok(self):
+        from commands.chip import handle_chip_list
+        r = handle_chip_list(db_path=self.d, cache=self._cache())
+        self.assertEqual(r["status"], "ok")
+        self.assertGreaterEqual(r["count"], 1)
+        self.assertIn("STM32F407VGTx", [m["name"] for m in r["data"]])
+
+    def test_peripheral_list_ok(self):
+        from commands.peripheral import handle_peripheral_list
+        r = handle_peripheral_list("STM32F407VGTx", db_path=self.d, cache=self._cache())
+        self.assertEqual(r["status"], "ok")
+        self.assertIn("SPI", r["data"])
+        self.assertIn("SPI1", r["data"]["SPI"])
+
+    def test_pin_list_ok(self):
+        from commands.pin import handle_pin_list
+        r = handle_pin_list("STM32F407VGTx", db_path=self.d, cache=self._cache())
+        self.assertEqual(r["status"], "ok")
+        self.assertIn("PA5", r["data"])
+
+    def test_dma_list_ok(self):
+        from commands.dma import handle_dma_list
+        r = handle_dma_list("STM32F407VGTx", db_path=self.d, cache=self._cache())
+        self.assertEqual(r["status"], "ok")
+        self.assertIn("SPI1_RX", r["data"])
+
+    def test_irq_list_ok(self):
+        from commands.irq import handle_irq_list
+        r = handle_irq_list("STM32F407VGTx", db_path=self.d, cache=self._cache())
+        self.assertEqual(r["status"], "ok")
+        self.assertIn("SPI1", r["data"])
+
+    def test_missing_db_returns_structured_error_not_crash(self):
+        """库不可用时五个 list 入口都返回结构化错误而非抛异常。"""
+        from commands.chip import handle_chip_list
+        from commands.peripheral import handle_peripheral_list
+        from commands.pin import handle_pin_list
+        from commands.dma import handle_dma_list
+        from commands.irq import handle_irq_list
+        cases = [
+            (handle_chip_list, {}),
+            (handle_peripheral_list, {"mcu_name": "STM32F407VGTx"}),
+            (handle_pin_list, {"mcu_name": "STM32F407VGTx"}),
+            (handle_dma_list, {"mcu_name": "STM32F407VGTx"}),
+            (handle_irq_list, {"mcu_name": "STM32F407VGTx"}),
+        ]
+        for fn, kwargs in cases:
+            r = fn(db_path=Path("Z:/no/such/dir"), cache=self._cache(), **kwargs)
+            self.assertEqual(r["status"], "error", msg=fn.__name__)
+            self.assertEqual(r["error"]["code"], "DB_NOT_FOUND", msg=fn.__name__)
+
+
 class CliExitCodeTests(unittest.TestCase):
     """子进程级验证：--help 正常、错误返回非零退出码、选项前后位置均合法。"""
 
@@ -177,6 +275,7 @@ class CliExitCodeTests(unittest.TestCase):
     def setUp(self):
         self.d = make_test_dir()
         make_db(self.d, "6.10")
+        add_mcu_xml(self.d)
 
     def tearDown(self):
         drop_dir(self.d)
@@ -213,6 +312,23 @@ class CliExitCodeTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         payload = json.loads(r.stdout)
         self.assertEqual(payload["error"]["code"], "MISSING_ARG")
+
+    def test_all_list_flags_exit_zero_with_json(self):
+        """CLI 层回归：五个 --list 发现入口必须可用（历史 bug 在此全灭）。"""
+        cases = [
+            ("chip", "--list"),
+            ("peripheral", "STM32F407VGTx", "--list"),
+            ("pin", "STM32F407VGTx", "--list"),
+            ("dma", "STM32F407VGTx", "--list"),
+            ("irq", "STM32F407VGTx", "--list"),
+        ]
+        for cli_args in cases:
+            with self.subTest(args=cli_args):
+                r = self._run(*cli_args, "--db-path", str(self.d))
+                self._assert_ok(r)
+                payload = json.loads(r.stdout)
+                self.assertEqual(payload["status"], "ok")
+                self.assertTrue(payload["data"], msg=f"empty data: {cli_args}")
 
 
 if __name__ == "__main__":

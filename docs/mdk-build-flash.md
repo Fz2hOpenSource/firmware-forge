@@ -2,6 +2,8 @@
 
 工作台通过一个统一脚本 `scripts/mdk/mdk.ps1` 封装 Keil UV4 的编译与烧录；`/build` 命令（带后缀）和 AI 的 shell 调用都走它。烧录后端（keil/stlink/dap/jlink）独立在 `scripts/mdk/flash-backends.ps1`。
 
+> 分工说明：本文是 `/build` 与编译/烧录的**唯一权威参考**。工作台总览与快速开始见 [README](../README.md)；装好之后的日常管理（preset 切换、技能摆放、更新卸载）见 [workbench-usage.md](workbench-usage.md)。
+
 ## 配置（通常无需手动配，自动探测）
 
 `mdk.ps1` 会**自动探测**，优先级如下：
@@ -37,7 +39,7 @@ $FlashBackend = 'keil'   # keil | stlink | dap | jlink
 
 安全底线：flash 不提供"全部烧录"模式，多 MCU 各自显式指定目标。
 
-## 人怎么用（slash 命令）
+## slash 命令用法（/build 后缀）
 
 一个命令 `/build`，加后缀切换动作：
 
@@ -46,7 +48,7 @@ $FlashBackend = 'keil'   # keil | stlink | dap | jlink
 - `/build -f`   —— 烧录下载
 - `/build -rf`  —— 全量重编译后烧录（重编译有错误则跳过烧录）
 
-## AI 怎么用
+## AI 调用方式（shell 工具）
 
 AI 通过 PowerShell 工具调用同一个脚本（长编译放后台）：
 
@@ -89,4 +91,4 @@ pwsh -File "$env:DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.ps1" flash
 ### 新增后端（分层，两步）
 
 1. 在 `flash-backends.ps1` 的 `$FlashBackends` 加一行：`'名字' = 'Invoke-Flash名字'`
-2. 写一个 `Invoke-Flash<名字>` 函数（约定参数 `-ProjectFile -Image`）：定位工具 → 拼命令 → 运行；失败 `Write-Error` + `exit 1`
+2. 写一个 `Invoke-Flash<名字>` 函数（约定参数 `-ProjectFile -Image -ImageDir -FlashAddress`）：定位工具 → 拼命令 → 运行；失败 `Write-Error` + `exit 1`

@@ -10,7 +10,8 @@ $ProjectPath = ''
 # 烧录后端：keil | stlink | dap | jlink
 $FlashBackend = 'keil'
 
-# 烧录镜像 .hex/.bin/.axf（留空则从工程输出目录自动探测，取最新）
+# 烧录镜像（留空则从工程输出目录自动探测：只认 .hex/.axf，命中多个候选会报错列出，
+# 绝不"取最新"猜；.bin 没有内嵌地址，必须显式指定并配 -FlashAddress）
 $FlashImage = ''
 
 # ---- 各烧录后端工具路径（留空则自动探测） ----

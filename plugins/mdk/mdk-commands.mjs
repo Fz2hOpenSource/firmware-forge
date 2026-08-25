@@ -8,7 +8,7 @@
  *   /build -rf  → 全量重编译后烧录（重编译有错误则跳过烧录）
  *
  * 命令 host-side 执行，调用 scripts/mdk/mdk.ps1（UV4 路径走注册表自动探测，
- * 工程从会话工作区向上/一级子目录搜索 *.uvprojx），返回结果摘要。
+ * 工程从会话工作区只向下递归搜索 *.uvprojx，默认 6 层深，不向上爬父目录），返回结果摘要。
  */
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'

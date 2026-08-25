@@ -57,13 +57,13 @@ def handle_peripheral(peripheral_type, mcu_name, instance=None, db_path=None, ca
 def handle_peripheral_list(mcu_name, db_path=None, cache=None):
     if cache is None:
         cache = Cache()
+    db_dir, dbsig = get_db_signature(db_path)
+    if db_dir is None:
+        return {"status": "error", "error": {"code": "DB_NOT_FOUND", "message": "CubeMX database not found"}}
     cache_key = f"periph_list_{dbsig}_{mcu_name}"
     cached = cache.get(cache_key)
     if cached:
         return cached
-    db_dir, dbsig = get_db_signature(db_path)
-    if db_dir is None:
-        return {"status": "error", "error": {"code": "DB_NOT_FOUND", "message": "CubeMX database not found"}}
     mcu_xml = get_mcu_xml_path(db_dir, mcu_name)
     if mcu_xml is None or not mcu_xml.exists():
         return {"status": "error", "error": {"code": "MCU_NOT_FOUND", "message": f"MCU XML for '{mcu_name}' not found"}}
