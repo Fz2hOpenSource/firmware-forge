@@ -1,0 +1,2 @@
+name: 嵌入式开发工作台
+description: 面向 Cortex-M/STM32 固件的通用嵌入式工作台：内置 arm-cortex-expert、embedded-test-engineer、embedded-protocol-designer 技能，以及 Keil MDK 编译/烧录命令。 Generic embedded workbench for Cortex-M/STM32 firmware: firmware review, verification strategy, and protocol design skills plus Keil MDK build/flash commands.

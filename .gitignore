@@ -1,0 +1,42 @@
+# Build and Release Folders
+bin-debug/
+bin-release/
+[Oo]bj/
+[Bb]in/
+
+# Other files and folders
+.settings/
+
+# Executables
+*.swf
+*.air
+*.ipa
+*.apk
+
+# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
+# should NOT be excluded as they contain compiler settings and other important
+# information for Eclipse / Flash Builder.
+
+# Python
+__pycache__/
+*.py[cod]
+
+# MDK build logs
+scripts/mdk/*.log
+logs/
+
+# 本机 MDK 配置（每台机器各自维护，不提交）
+scripts/mdk/mdk.config.ps1
+
+# AI 会话录制日志（含隐私对话，严禁入库）
+rollout-*.jsonl
+
+# 临时工作稿（产品文档草稿等，本地保留不进版本库）
+temporary/
+
+# stm32cli 测试夹具与临时输出
+.tmp-tests/
+
+# pytest 缓存残留
+.pytest_cache/
+pytest-cache-files-*/

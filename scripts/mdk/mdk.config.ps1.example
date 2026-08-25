@@ -1,0 +1,32 @@
+# MDK 配置模板 —— 复制为 mdk.config.ps1（可选；留空则自动探测）。
+# mdk.config.ps1 已被 .gitignore 忽略（每台机器各自维护，不提交）。
+
+# UV4.exe 绝对路径（留空则从注册表 / 常见路径自动探测）
+$Uv4Path = ''
+
+# 工程 .uvprojx 绝对路径（留空则从 -Root / 当前目录向下递归搜索，默认 6 层深）
+$ProjectPath = ''
+
+# 烧录后端：keil | stlink | dap | jlink
+$FlashBackend = 'keil'
+
+# 烧录镜像 .hex/.bin/.axf（留空则从工程输出目录自动探测，取最新）
+$FlashImage = ''
+
+# ---- 各烧录后端工具路径（留空则自动探测） ----
+$Stm32ProgPath = ''   # STM32_Programmer_CLI.exe（ST-Link）
+$PyocdPath     = ''   # pyocd（CMSIS-DAP，需 pip install pyocd）
+$JLinkPath     = ''   # JLink.exe（J-Link）
+
+# ---- 目标/设备名（按你的 MCU 改） ----
+$DapTarget   = 'stm32f429xx'   # pyocd -t 目标名
+$JlinkDevice = 'STM32F429VE'   # J-Link 设备名
+
+# ---- 多 MCU 工程（可选：一个仓库里有多个 .uvprojx 时用） ----
+# 工程昵称表：值相对 -Root / 会话工作区；之后即可 `mdk.ps1 build -Project <昵称>`
+$MdkProjects = @{
+  # 'main'   = 'firmware\MCU_Code\main\MDK-ARM\main.uvprojx'
+  # 'sensor' = 'firmware\MCU_Code\sensor\MDK-ARM\sensor.uvprojx'
+}
+# 发现多个工程时的默认选中（uvprojx 文件名，不含扩展名；留空 = 仍报错列出候选）
+$MdkDefaultProject = ''
