@@ -33,7 +33,7 @@ $FlashBackend = 'keil'   # keil | stlink | dap | jlink
    ```
 
    之后 `-Project main` 即可；未知昵称报错并提示可用昵称。
-2. **默认工程自动选中**：`$MdkDefaultProject = 'vibrating'`——多候选中按 uvprojx 文件名（不含扩展名）**唯一命中**则自动选中，否则仍报错列出。
+2. **默认工程自动选中**：`$MdkDefaultProject = 'main'`——多候选中按 uvprojx 文件名（不含扩展名）**唯一命中**则自动选中，否则仍报错列出。
 
 安全底线：flash 不提供"全部烧录"模式，多 MCU 各自显式指定目标。
 
@@ -75,14 +75,14 @@ pwsh -File "$env:DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.ps1" flash
 
 `flash` 动作分发到 `scripts/mdk/flash-backends.ps1`，用 `$FlashBackend` 选择：
 
-| 后端 | 工具 | 命令要点 | 本机状态 |
+| 后端 | 工具 | 命令要点 | 依赖 |
 |---|---|---|---|
-| `keil` | UV4.exe | `UV4 -f <proj> -j0`（工程配置的调试器） | ✅ |
-| `stlink` | STM32_Programmer_CLI.exe | `-c port=SWD -w <hex> -v -rst` | ✅ 已装，自动探测 |
-| `dap` | pyocd | `pyocd flash -t <target> <hex>` | ⚠️ 需 `pip install pyocd` |
-| `jlink` | JLink.exe | CommanderScript：`loadfile <hex>` | ⚠️ 需装 SEGGER J-Link |
+| `keil` | UV4.exe | `UV4 -f <proj> -j0 -o logs\uv4-flash.log`（工程配置的调试器，成败按日志判定） | Keil MDK |
+| `stlink` | STM32_Programmer_CLI.exe | `-c port=SWD -w <hex> [-addr] -v -rst` | STM32CubeProgrammer |
+| `dap` | pyocd | `pyocd flash -t <target> [--base-address <addr>] <hex>`；需配置 `$DapTarget` | pyocd |
+| `jlink` | JLink.exe | CommanderScript：`loadfile <hex> [addr]`；需配置 `$JlinkDevice` | SEGGER J-Link |
 
-镜像 `.hex` 自动定位（工程输出目录取最新；你的工程 `<CreateHexFile>1</CreateHexFile>` 会生成 `MDK-ARM\ad7176\ad7176.hex`）。也可用 `-Image` 参数或 `$FlashImage` 手动指定。
+镜像自动定位规则：优先使用所选工程的 Target 输出目录；只认 `.hex/.axf`，命中多个候选会报错并列出（用 `-Image` 指定其一）。`.bin` 没有内嵌地址——必须显式 `-Image` 且配 `-FlashAddress`。也可用 `$FlashImage` 固定镜像。
 
 切换后端：改 `mdk.config.ps1` 的 `$FlashBackend`，或命令行 `mdk.ps1 flash -Backend stlink`。
 

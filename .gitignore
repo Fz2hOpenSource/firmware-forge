@@ -40,3 +40,6 @@ temporary/
 # pytest 缓存残留
 .pytest_cache/
 pytest-cache-files-*/
+
+# understand 技能的扫描缓存
+.understand-anything/

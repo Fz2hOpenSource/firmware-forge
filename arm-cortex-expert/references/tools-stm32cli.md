@@ -1,4 +1,6 @@
 # stm32cli — CubeMX Database Query Tool
+> 路径约定：本文件中的 `python tools/...` 为相对技能根目录的写法，运行前请先按 SKILL.md 的 **Tool Path Resolution** 解析为绝对路径。
+
 
 Companion CLI shipped in `tools/stm32cli/`. Resolve its absolute path via
 the skill's `Tool Path Resolution` rules. It is an experimental accelerator,
