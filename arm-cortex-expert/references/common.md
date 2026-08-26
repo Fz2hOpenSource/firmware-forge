@@ -53,6 +53,22 @@ Use these as stop-points, not mandatory steps. Stop at the simplest tier that sa
 5. Define failure behavior: timeout, overflow, missed sample, skew violation, DMA error, and transport backpressure.
 6. Add observability: counters, min/max interval, dropped frames, last error, and optional timestamps.
 
+## Reconfiguration and State Continuity
+
+- Model profile, excitation, peripheral mode, filter, calibration, and rate changes as explicit transactions: validate first; quiesce affected producers; drain or invalidate old work; apply hardware and algorithm state; advance a generation/epoch; then publish the first valid result.
+- Tag queued samples, processed results, and application-visible snapshots with enough revision information to reject stale data after a transition.
+- Define separately which state survives stream stop/start, transport disconnect, source recovery, profile change, algorithm reset, software reset, and power cycle. Do not let incidental globals decide product behavior.
+- Preserve filter state only when sample timing, coefficients, units, calibration, and signal meaning remain compatible. Otherwise reset or transform it explicitly and expose warm-up/settle state.
+- A failed transition must leave the previous known-good state or a clearly reported safe stopped state; never continue with a partially applied configuration.
+
+## Streaming and Mixed Sources
+
+- Keep source validity, processing readiness, stream running state, and transport connectivity separate. A temporary invalid source should not silently kill the service or require manual restart unless the product contract explicitly says so.
+- Separate startup first-output timeout from sustained no-progress detection. Recovery after a source returns must be bounded and observable.
+- For independently clocked sources, use timestamp/epoch association with a measured skew and history budget. A single incomplete group must be dropped or resynchronized without poisoning later groups.
+- Use wrap-safe unsigned time differences and an explicit "observed" flag. Do not use `UINT32_MAX` or another interval value as both data and invalid sentinel.
+- For detailed capacity, recovery, association, and counter rules, read `measurement-streaming.md`.
+
 ## ISR and Task Boundaries
 
 - Keep ISR/DMA callbacks non-blocking.
@@ -113,6 +129,9 @@ Do not simplify away these checks or mechanisms:
   - Avoid `double` on MCUs without double-precision hardware unless explicitly required.
 - Document filter reset behavior when sample/output rates change.
 - Distinguish raw ADC sample rate from filtered output/upload rate.
+- State filter group delay, transient/warm-up behavior, saturation/invalid-input policy, and whether runtime state is inherited across compatible configurations.
+- Before changing a filter to hide outliers, separate random noise, periodic interference, isolated impulses, true steps, slow drift, and calibration bias.
+- For detailed multirate, notch, circular phase, anomaly, and calibration-chain rules, read `measurement-dsp.md`.
 
 ## Intentional Simplification Comments
 

@@ -45,29 +45,37 @@ sizing in this skill.
 
 Prefer evidence in this order:
 
-1. User-provided project code, schematics (for firmware-relevant facts), CubeMX `.ioc`, linker scripts, and build settings.
-2. Vendor reference manuals, datasheets, errata, HAL/LL documentation, and RTOS/LwIP documentation.
-3. Local skill references in `references/`.
-4. General Cortex-M heuristics.
+1. The current user request and applicable project-local instructions such as `AGENTS.md`.
+2. Project-owned architecture, protocol, and test specifications, followed by code, schematics (for firmware-relevant facts), CubeMX `.ioc`, linker scripts, build settings, logs, and measurements.
+3. Vendor reference manuals, datasheets, errata, HAL/LL documentation, and RTOS/LwIP documentation.
+4. Local skill references in `references/`.
+5. General Cortex-M heuristics.
 
-State when a conclusion is an inference from general rules rather than proven by project artifacts.
+State when a conclusion is an inference from general rules rather than proven by project artifacts. When sources conflict, preserve the conflicting revisions, values, and observed behavior; state which source controls the current decision and what evidence would resolve the conflict. Do not silently merge contradictions.
 
 ## Read Order
 
 1. Read `references/common.md` for shared workflow rules.
 2. Read exactly one core file from `references/cores/` when the CPU class is known.
 3. Read exactly one family file from `references/families/` when the MCU family is covered.
-4. Read `references/lwip-ethernet.md` when the task involves LwIP, Ethernet, TCP/IP upload, `netif`, `pbuf`, or STM32 ETH DMA.
-5. If the MCU family is not covered, skip family references and rely on project/vendor evidence.
-6. Do not load unrelated reference files during ordinary firmware work. When auditing this skill itself, reading all resources is acceptable.
+4. Read [`references/measurement-streaming.md`](references/measurement-streaming.md) for continuous acquisition, mixed sources, start/stop recovery, rate changes, buffering, or long-running streams.
+5. Read [`references/measurement-dsp.md`](references/measurement-dsp.md) for filtering, decimation, anomaly handling, calibration/zero ordering, or phase/frequency processing.
+6. Read [`references/persistent-storage.md`](references/persistent-storage.md) for external flash, persisted settings/calibration, SPI storage concurrency, retries, or power-loss behavior.
+7. Read `references/lwip-ethernet.md` when the task involves LwIP, Ethernet, TCP/IP upload, `netif`, `pbuf`, or STM32 ETH DMA.
+8. If the MCU family is not covered, skip family references and rely on project/vendor evidence.
+9. Do not load unrelated reference files during ordinary firmware work. When auditing this skill itself, reading all resources is acceptable.
 
 ## Selection Guide
 
-- Cortex-M0/M0+: read `cores/m0-m0plus.md`.
-- Cortex-M3: read `cores/m3.md`.
-- Cortex-M4/M4F: read `cores/m4-m4f.md`.
-- Cortex-M7/M7F: read `cores/m7-m7f.md`.
-- STM32F4/F7/H7/L0/L4: also read the matching family file.
+- Cortex-M0/M0+: read [`cores/m0-m0plus.md`](references/cores/m0-m0plus.md).
+- Cortex-M3: read [`cores/m3.md`](references/cores/m3.md).
+- Cortex-M4/M4F: read [`cores/m4-m4f.md`](references/cores/m4-m4f.md).
+- Cortex-M7/M7F: read [`cores/m7-m7f.md`](references/cores/m7-m7f.md).
+- STM32F4: also read [`families/stm32-f4.md`](references/families/stm32-f4.md).
+- STM32F7: also read [`families/stm32-f7.md`](references/families/stm32-f7.md).
+- STM32H7: also read [`families/stm32-h7.md`](references/families/stm32-h7.md).
+- STM32L0: also read [`families/stm32-l0.md`](references/families/stm32-l0.md).
+- STM32L4: also read [`families/stm32-l4.md`](references/families/stm32-l4.md).
 - nRF, SAMD, GD32, AT32, or other Cortex-M families: use this skill only for generic Cortex-M patterns unless vendor-specific files are added.
 
 ## Complexity Strategy
@@ -87,6 +95,10 @@ Use `references/common.md` as the authoritative source for operating modes, the 
 - Choose integer/fixed-point, float, or CMSIS-DSP based on the MCU, FPU, rate, precision, and existing project code. Do not force fixed-point when the project has an FPU and measured float path is safe.
 - Treat Cortex-M7 cache maintenance, memory placement, and DMA accessibility as mandatory design topics, not afterthoughts.
 - For configurable sampling/upload rates, distinguish ADC/input sample rate from output/upload rate and document filter/decimation behavior.
+- Treat profile, mode, calibration, and rate changes as transactions. Define validation, quiesce/drain, apply, generation advance, stale-result rejection, filter-state compatibility, rollback, and first-valid-output behavior.
+- Treat service availability and measurement validity as separate states. A missing or temporarily invalid source should recover without a mandatory stream restart unless a documented product safety rule requires a stop.
+- For independently clocked or delivered sources, associate data by hardware timestamp or explicit epoch with a measured skew/history budget. Do not join by task arrival order, queue adjacency, or nominally equal rates.
+- Keep time arithmetic wrap-safe. Represent "not observed" with explicit validity, not a numeric sentinel that can contaminate interval maxima or timeout logic.
 
 ## Output Contract
 

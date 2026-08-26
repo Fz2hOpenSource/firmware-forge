@@ -17,6 +17,15 @@ Use this reference only for LwIP, Ethernet, TCP/IP upload, `netif`, `pbuf`, or S
 - For `NO_SYS=1`, keep LwIP calls in the main/super-loop context and service timers as required by the project.
 - Keep acquisition timing separate from network throughput; Ethernet bandwidth does not prove deterministic sampling.
 
+## TX Progress and Retry Semantics
+
+- Treat application acceptance, stack enqueue, driver submission, DMA completion, descriptor reclaim, wire transmission, and TCP acknowledgment as different events. A successful `send`, `netconn_write`, `tcp_write`, or `linkoutput` enqueue does not prove final delivery.
+- Handle partial stream writes by advancing only by the returned byte count and retaining the unsent suffix.
+- Track no-progress age as elapsed time since forward progress, not just retry count. Repeated `ERR_MEM`, would-block, zero-byte writes, or unchanged descriptor state must wait/yield and terminate or recover at a documented deadline.
+- Keep linkoutput and driver retry loops bounded. Link-down, DMA-stall, and descriptor-exhaustion recovery must not indefinitely block acquisition, control traffic, or the TCP/IP thread.
+- For zero-copy TX, retain the backing storage until the actual driver/DMA ownership release point.
+- Expose distinct counters for application enqueue, short/rejected writes, driver submit, DMA completion/reclaim, no-progress timeout, link-down discard, and acknowledgment where observable.
+
 ## Pbuf Ownership
 
 - Make `pbuf` ownership explicit: who allocates, who references, who may mutate payload, and who frees.
@@ -39,4 +48,6 @@ Use this reference only for LwIP, Ethernet, TCP/IP upload, `netif`, `pbuf`, or S
 - Confirm `linkoutput` and RX input paths preserve `pbuf` lifetime rules.
 - Confirm link status, DHCP/static IP, and reconnection paths have bounded behavior.
 - Confirm network backpressure cannot block high-priority acquisition or control paths indefinitely.
+- Confirm partial writes preserve the unsent suffix and every retry/no-progress loop has a wait condition, deadline, and observable recovery result.
+- Confirm diagnostics distinguish application/stack acceptance from driver or DMA progress.
 - Confirm project diagnostics expose packet drops, pbuf allocation failures, descriptor exhaustion, and link state changes.
