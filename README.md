@@ -46,10 +46,11 @@ cd <仓库目录>
 - “HardFault 的 PC 是 `0x0800b455`，帮我从 map 定位。”
 
 ```text
-/build        # 增量编译
-/build -r     # 全量重编译
-/build -f     # 烧录
-/build -rf    # 全量重编译成功后再烧录
+/build            # 编译（默认增量；多工程仓库可带工程昵称）
+/build -r         # 全量重编译
+/build sensor     # 编译昵称为 sensor 的工程
+/flash            # 烧录
+/flash main       # 烧录指定工程
 ```
 
 ## 工作方式与安全护栏

@@ -46,10 +46,11 @@ Create a DSH session and select 「嵌入式开发工作台」 (Embedded Workben
 - “Locate a HardFault with PC `0x0800b455` from this map file.”
 
 ```text
-/build        # incremental build
-/build -r     # full rebuild
-/build -f     # flash
-/build -rf    # rebuild, then flash only after a successful build
+/build            # build (incremental by default; pass a project alias for multi-project repos)
+/build -r         # full rebuild
+/build sensor     # build the project aliased as 'sensor'
+/flash            # flash
+/flash main       # flash a specific project
 ```
 
 ## How it stays conservative

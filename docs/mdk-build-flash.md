@@ -1,6 +1,6 @@
 # Keil MDK 编译/烧录 SOP
 
-工作台通过一个统一脚本 `scripts/mdk/mdk.ps1` 封装 Keil UV4 的编译与烧录；`/build` 命令（带后缀）和 AI 的 shell 调用都走它。烧录后端（keil/stlink/dap/jlink）独立在 `scripts/mdk/flash-backends.ps1`。
+工作台通过一个统一脚本 `scripts/mdk/mdk.ps1` 封装 Keil UV4 的编译与烧录；`/build` 与 `/flash` 两个 slash 命令和 AI 的 shell 调用都走它。本文是这两个命令的唯一权威参考。烧录后端（keil/stlink/dap/jlink）独立在 `scripts/mdk/flash-backends.ps1`。
 
 > 分工说明：本文是 `/build` 与编译/烧录的**唯一权威参考**。工作台总览与快速开始见 [README](../README.md)；装好之后的日常管理（preset 切换、技能摆放、更新卸载）见 [workbench-usage.md](workbench-usage.md)。
 
@@ -39,14 +39,19 @@ $FlashBackend = 'keil'   # keil | stlink | dap | jlink
 
 安全底线：flash 不提供"全部烧录"模式，多 MCU 各自显式指定目标。
 
-## slash 命令用法（/build 后缀）
+## slash 命令用法
 
-一个命令 `/build`，加后缀切换动作：
+两条独立命令：`/build` 只管编译，`/flash` 只管烧录——烧录永远是一次显式决定。
 
-- `/build`      —— 增量编译（默认，等同 `-b`）
-- `/build -r`   —— 全量重编译
-- `/build -f`   —— 烧录下载
-- `/build -rf`  —— 全量重编译后烧录（重编译有错误则跳过烧录）
+| 命令 | 动作 |
+|---|---|
+| `/build` | 增量编译 |
+| `/build -r` | 全量重编译 |
+| `/build <昵称>` | 编译指定工程 |
+| `/flash` | 烧录下载 |
+| `/flash <昵称>` | 烧录指定工程 |
+
+不带昵称时：唯一工程自动选中；多工程报错并列出候选与可用昵称。烧录没有"先编译"链式开关——先 `/build` 确认成功，再 `/flash`。
 
 ## AI 调用方式（shell 工具）
 
