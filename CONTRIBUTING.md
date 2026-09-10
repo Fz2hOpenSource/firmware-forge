@@ -40,6 +40,8 @@ python -X utf8 scripts/validate_skills.py
 python -m unittest discover -s embedded-test-engineer/tests -v
 # 修改芯片查询工具时
 python -m unittest discover -s arm-cortex-expert/tools/stm32cli/tests -v
+# 修改 MDK 命令插件时（Node.js 20+，使用替身进程，不构建或烧录）
+node --test plugins/mdk/tests/mdk-commands.test.mjs
 ```
 
 PowerShell 文件保持仓库要求的 UTF-8 BOM。修改安装/烧录代码时，先在隔离目录或替身工具上验证目标选择和失败行为，再按需要补真实环境验证。不要仅为文档改动触发安装、烧录或全量硬件测试。

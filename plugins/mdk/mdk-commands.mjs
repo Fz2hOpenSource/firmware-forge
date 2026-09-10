@@ -26,8 +26,9 @@ const execFileAsync = promisify(execFile)
 const here = dirname(fileURLToPath(import.meta.url))
 const MDK_PS1 = join(here, '..', '..', 'scripts', 'mdk', 'mdk.ps1')
 
-// Keil 全量编译可能耗时数分钟。
-const BUILD_TIMEOUT_MS = 10 * 60 * 1000
+// 让包装脚本先完成 UV4 超时处理；外层另留进程退出和结果收集时间。
+const UV4_WAIT_SECONDS = 15 * 60
+const COMMAND_TIMEOUT_MS = (UV4_WAIT_SECONDS + 60) * 1000
 
 /**
  * 解析命令参数。
@@ -59,14 +60,15 @@ export function parseArgs(rawInput, allowed) {
 }
 
 async function runOne(action, cwd, project) {
-  const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', MDK_PS1, action]
+  const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', MDK_PS1, action,
+    '-WaitTimeoutSec', String(UV4_WAIT_SECONDS)]
   if (cwd) args.push('-Root', cwd)
   if (project) args.push('-Project', project)
   try {
     const { stdout, stderr } = await execFileAsync(
       'powershell.exe',
       args,
-      { timeout: BUILD_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, windowsHide: true, cwd: cwd || undefined },
+      { timeout: COMMAND_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, windowsHide: true, cwd: cwd || undefined },
     )
     const text = [stdout, stderr].map(s => (s || '').trim()).filter(Boolean).join('\n').trim()
     return { ok: true, text: text || `${action} finished` }
@@ -75,6 +77,9 @@ async function runOne(action, cwd, project) {
     const out = (error?.stdout ?? '').trim()
     const err = (error?.stderr ?? '').trim()
     const detail = [out, err].filter(Boolean).join('\n').trim()
+    if (error?.killed || error?.code === 'ETIMEDOUT') {
+      return { ok: false, text: `${action} 结果不确定：外层等待中断，不能确认工具或硬件已停止。请先核对进程、日志和目标状态，再决定是否重试。${detail ? `\n${detail}` : ''}` }
+    }
     return { ok: false, text: `${action} 失败：${detail || error.message}` }
   }
 }
