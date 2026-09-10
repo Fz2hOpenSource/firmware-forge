@@ -4,6 +4,12 @@
 
 设计取舍见 [设计理念](docs/design-philosophy.md)，面向贡献者的步骤见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 使用技能
+
+当前提供 Codex 与 DSH 两种使用入口。三个技能位于仓库顶层：`embedded-protocol-designer/`、`arm-cortex-expert/`、`embedded-test-engineer/`。
+按任务读取对应 `SKILL.md`，无需每次加载全部技能。安装与更新见 [使用指南](docs/workbench-usage.md)，采用实际 loader 报告的路径。
+`install.ps1` / `install.bat` 仅用于 DSH 工作台；在 Codex 使用技能按指南复制完整技能目录。
+
 ## 修改
 
 - 先查看需求、相关文件和 Git 差异，明确本次验收条件。讨论阶段不直接修改。

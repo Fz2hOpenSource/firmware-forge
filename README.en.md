@@ -6,6 +6,8 @@ Three independent skills for AI-assisted **STM32 / Cortex-M firmware, FreeRTOS a
 
 Define requirements first, choose the smallest complete interaction, then implement and verify it. Start with simple upload control and add mechanisms only when multichannel acquisition, asynchronous work or recovery requirements need them.
 
+Current host integrations are **Codex skills** and the **DSH workbench**. Other hosts are deferred until there is a concrete integration need.
+
 ## Choose a skill
 
 | Task | Skill | Main output |
@@ -69,7 +71,7 @@ Expect a small requirements/behavior contract and explicit completion/failure se
 
 The [DSH guide](docs/workbench-usage.md#dsh) documents the installer. `./install.ps1` installs the preset under `$DSH_HOME/.agent-presets/embedded` (default `~/.dsh/.agent-presets/embedded`). It replaces managed plugin/script/skill trees and removes skill directories outside its distribution list; back up customizations first. This is not a Codex installer.
 
-On Windows, `install.bat` is a double-click entry to the same installer. Choose the embedded preset in DSH. The current Windows MDK plugin offers `/build`, `/build -r` and `/flash`, with an optional project alias. Build/flash requires UV4, project configuration and the selected programmer; it is not supplied by copying skills. See [MDK usage (Chinese)](docs/mdk-build-flash.md).
+On Windows, `install.bat` is a double-click entry to the same installer. Choose the embedded preset in DSH. The current Windows MDK plugin offers `/build`, `/build -r`, `/build <alias>`, `/flash` and `/flash <alias>`. Build first, check its result, then invoke `/flash` separately when needed. Build/flash requires UV4, project configuration and the selected programmer; it is not supplied by copying skills. See [MDK usage (Chinese)](docs/mdk-build-flash.md).
 
 ### Try a tool without hardware
 
@@ -98,6 +100,8 @@ Python 3.10+ is a common starting point for these tools. The recorded test envir
 See [CONTRIBUTING.md](CONTRIBUTING.md) for a lightweight workflow and [AGENTS.md](AGENTS.md) for AI collaboration rules. [Behavior scenarios](docs/skill-behavior-cases.md) are evaluation criteria, not evidence of completed device tests. The [audit record](docs/skills-audit-2026-09-08.md) describes checks actually performed.
 
 See also the [architecture](docs/architecture.md), [DSH integration](docs/dsh-integration.md) and [current integration checks](docs/integration-2026-09-10.md) (Chinese).
+
+The [pre-release check record](docs/release-check-2026-09-10.md) lists the completed offline checks and remaining host/hardware validation (Chinese).
 
 A graph pass does not prove scheduler, DMA/cache, FPGA CDC or physical safety behavior. Query/map tools also need cross-checking against the actual project and vendor evidence.
 

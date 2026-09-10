@@ -4,6 +4,8 @@
 
 先选入口：只需要协议、固件或测试指导，安装相应技能；需要 DSH 内的 MDK 命令，再安装工作台；仅试状态图工具可以直接运行 Python。下面路径除明确说明外均相对本仓库根目录。
 
+当前宿主支持范围为 **Codex 和 DSH**；其它宿主的安装适配与兼容性验证留待后续需求。
+
 ## 获取源码
 
 ```sh
@@ -16,7 +18,9 @@ cd firmware-forge
 <a id="codex"></a>
 ## 在 Codex 使用技能
 
-新安装采用用户目录 `~/.agents/skills/`，或目标固件仓库的 `.agents/skills/`。显式点名技能或按任务自动选择的行为，以及更新后未出现时的重启处理，见 [OpenAI 官方技能文档](https://learn.chatgpt.com/docs/build-skills)（2026-09-08 核对）。
+新安装采用用户目录 `~/.agents/skills/`，或目标固件仓库的 `.agents/skills/`。显式点名技能或按任务自动选择的行为，以及更新后未出现时的重启处理，见 [OpenAI 官方技能文档](https://learn.chatgpt.com/docs/build-skills)（2026-09-10 复核）。
+
+三个技能的 `agents/openai.yaml` 均显式允许隐式调用；这与 Codex 默认行为一致，也保留 `$技能名` 显式调用。是否实际选中仍需检查输出和加载路径。
 
 ### 首次安装
 

@@ -32,6 +32,7 @@ This skill handles firmware-level concerns:
 - RTOS task/thread, queue, semaphore, event, and wrapper-layer architecture
 - Peripheral driver structure and register configuration
 - LwIP/Ethernet driver-level integration
+- Firmware state-transition execution, bounded waits, recovery and resource release; public protocol semantics belong to the protocol skill
 
 Board-level electrical/hardware design (pin wiring, voltage levels, component selection, PCB layout) is excluded.
 

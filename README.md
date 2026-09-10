@@ -6,6 +6,8 @@
 
 它帮助你先确定需求，再设计最小协议与状态，完成实现和验证；从简单的开始/停止上传，到多通道采集和异步恢复，都按实际需求增加机制。
 
+当前提供 **Codex 技能安装**与 **DSH 工作台**两种宿主入口；其它宿主适配留待后续实际需求。
+
 ## 选择你需要的能力
 
 | 你的任务 | 使用哪个技能 | 主要交付 |
@@ -86,6 +88,7 @@ python embedded-test-engineer/scripts/check_state_model.py embedded-test-enginee
 - [技能分工与维护](docs/skills-integration.md)
 - [项目架构](docs/architecture.md) 与 [DSH 集成](docs/dsh-integration.md)
 - [本次整合与验证记录](docs/integration-2026-09-10.md)
+- [发布前检查记录](docs/release-check-2026-09-10.md)
 - [贡献指南](CONTRIBUTING.md) 与面向 AI 的 [项目约束](AGENTS.md)
 - [行为验收场景](docs/skill-behavior-cases.md) 与 [2026-09-08 审查记录](docs/skills-audit-2026-09-08.md)
 
