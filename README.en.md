@@ -2,92 +2,69 @@
 
 [中文](README.md) · [Usage guide (Chinese)](docs/workbench-usage.md) · [Design philosophy](docs/design-philosophy.md) · [Contributing](CONTRIBUTING.md)
 
-Firmware Forge is a collection of **AI skills, commands and tools for embedded development**. Current coverage focuses on **STM32 / Cortex-M firmware, FreeRTOS, device interaction and verification**, with chip queries, build-artifact analysis and Keil MDK build/flash commands.
+AI is often good at writing firmware code, yet less sure which manual to trust, which boundaries to keep, or when to stop adding machinery. Firmware Forge fills that gap: a set of AI skills for STM32 / Cortex-M and FreeRTOS work, together with chip queries, map analysis, and Keil MDK build/flash commands.
 
-Current host integrations are **Codex skills** and the **DSH workbench**. Other hosts are deferred until needed. The current scope is firmware software engineering; it does not imply coverage of every MCU, embedded Linux or board-level hardware design.
+Skills carry engineering judgment. Commands perform the action. Tools inspect concrete data. They compose when needed, but each can stand alone. Protocol design is one specialty in the set — not a prerequisite for every task.
 
-## Capability map (the AI selects the entry)
+The currently supported hosts are **Codex** and **DSH**. Other hosts are deferred until there is a real need. Coverage is firmware software engineering; it does not claim every MCU, embedded Linux, or board-level hardware design.
 
-**You do not need to pick a skill first.** After installation, describe the task in your firmware project; the AI loads the matching skill, command, or tool from the request. Naming a skill with `$skill-name` is optional — useful to confirm routing or force one entry, not a usage prerequisite.
+## Capability map
 
-The table shows what the AI may use and what each entry delivers. **It is not a manual selection checklist:**
+After installation, describe the task. The AI loads the matching skill, command, or tool from the request. You can also prefix a message with `$skill-name` to name an entry explicitly.
 
-| Task | Entry | Main output |
+| Your task | Entry | Main output |
 |---|---|---|
-| Drivers, DMA/RTOS, acquisition/DSP, storage, networking or performance diagnosis | [arm-cortex-expert](arm-cortex-expert/SKILL.md) | Focused implementation or diagnosis, ownership and platform checks |
-| Unit tests, driver isolation, measurement replay, accuracy regression or timing | [embedded-test-engineer](embedded-test-engineer/SKILL.md) | Tests, replay results, tolerance rationale and hardware gaps |
-| Device-to-host/FPGA contracts, protocol design or compatible evolution | [embedded-protocol-designer](embedded-protocol-designer/SKILL.md) | Frames, commands, duplicate/failure semantics and compatibility |
-| Build, rebuild or flash an existing project | DSH `/build`, `/build -r`, `/flash` | Selected-project results and logs; [MDK guide](docs/mdk-build-flash.md) |
-| Query chip resources, analyze map files or lint explicit state graphs | Python helper tools | Scoped query and analysis results |
-
-Skills guide engineering decisions, commands provide execution entry points, and tools process specific inputs. Use them independently or together as needed. Protocol design is not a prerequisite for firmware implementation, testing or builds. If the AI picks the wrong entry, restate the task or name the intended skill.
+| Drivers, DMA/RTOS, acquisition/DSP, storage, networking, or performance diagnosis | [arm-cortex-expert](arm-cortex-expert/SKILL.md) | Focused implementation or diagnosis, ownership, and remaining platform checks |
+| Unit tests, driver isolation, replay, accuracy regression, or timing | [embedded-test-engineer](embedded-test-engineer/SKILL.md) | Tests, replay results, tolerance rationale, and hardware gaps |
+| Device-to-host/FPGA contracts, protocol design, or compatible evolution | [embedded-protocol-designer](embedded-protocol-designer/SKILL.md) | Frames and commands, duplicate/failure semantics, compatibility |
+| Build, rebuild, or flash an existing project | DSH `/build`, `/build -r`, `/flash` | Results and logs for the selected project; see the [MDK guide](docs/mdk-build-flash.md) |
+| Query chip resources, analyze a map, or lint an explicit state graph | Python helper tools | Scoped query and analysis results |
 
 ## Design philosophy
 
-**Clear tasks, proportionate designs, traceable evidence and verifiable results.**
+Good reliability work makes failure more controllable without making ordinary development heavier. Firmware Forge follows four plain rules: state the task, keep the design proportionate, ground claims in inspectable evidence, and verify what you assert.
 
-Establish the current task and acceptance criteria, preserve useful project infrastructure, and select the relevant implementation, diagnosis, test or command workflow. Requirements-first does not mean rewriting specifications for each patch. State models and bounded recovery apply where the actual path needs them.
-
-See the [design rationale and examples](docs/design-philosophy.md) (Chinese, with an English overview).
+“Requirements-first” does not mean rewriting a product specification for every patch. State models and bounded recovery belong only on paths that actually carry those risks. See the full [design notes](docs/design-philosophy.md) (Chinese, with an English overview).
 
 ## Quick start
+
+### 1. Get the project
 
 ```sh
 git clone https://github.com/Fz2hOpenSource/firmware-forge.git
 cd firmware-forge
 ```
 
-### Codex
+### 2. Install into your environment
 
-Copy the complete skill directories you need into `~/.agents/skills/` for personal use, or your firmware repository's `.agents/skills/` for project use. Keep `SKILL.md`, references and tools together. Inspect and back up an existing same-name skill before updating it. Local discovery and reload behavior follow the [official skill documentation](https://learn.chatgpt.com/docs/build-skills).
+| How you work | Next step | What you need |
+|---|---|---|
+| Use skills in Codex | Follow [Codex install](docs/workbench-usage.md#codex) and copy the full skill directories; then describe tasks naturally | Codex; DSH, Keil, and a board are not required |
+| Use the workbench in DSH | Read the [DSH install notes](docs/workbench-usage.md#dsh), then run `./install.ps1` (or double-click `install.bat` on Windows) | A DSH that can load this preset; the current MDK plugin uses Windows PowerShell |
+| Try the offline tools first | Run the help commands below | Python 3.10+; no AI host or hardware |
 
-For a first installation on Windows, run this from the cloned repository; it stops before copying if any selected destination already exists:
-
-```powershell
-$skillNames = @('arm-cortex-expert', 'embedded-protocol-designer', 'embedded-test-engineer')
-$skillDestination = Join-Path $env:USERPROFILE '.agents\skills'
-foreach ($name in $skillNames) {
-  if (Test-Path -LiteralPath (Join-Path $skillDestination $name)) {
-    throw "Skill already exists; compare and back up before updating: $name"
-  }
-}
-New-Item -ItemType Directory -Force -Path $skillDestination | Out-Null
-foreach ($name in $skillNames) {
-  Copy-Item -LiteralPath (Join-Path (Get-Location).Path $name) -Destination $skillDestination -Recurse -ErrorAction Stop
-}
-```
-
-After installation, describe the task in natural language; the AI selects an installed skill automatically when possible. You can still force one with `$skill-name`. If it does not appear, check the directory layout and restart Codex. An existing deployment may use another loader-reported location; avoid installing duplicate copies blindly. DSH and Keil are not required for skill use.
-
-For example, request firmware diagnosis directly:
+### 3. Start from the current task
 
 ```text
-Use $arm-cortex-expert.
 This existing STM32 + FreeRTOS acquisition project occasionally reads stale data
 after DMA completion. Inspect the actual MCU, memory regions, cache maintenance
 and buffer handoff. Establish the cause, then make the smallest supported fix.
 Keep the existing sampling and communication contracts; report checks and gaps.
 ```
 
-Or start directly with verification:
+Verification can be requested the same way:
 
 ```text
-Use $embedded-test-engineer to build replay regression for the existing filter
-and calibration chain. Inspect data formats, references and allowed errors first,
-then choose minimal test seams. Distinguish regression fidelity from measurement accuracy.
+Build a replay regression for the existing filter and calibration chain.
+Inspect data formats, references and allowed errors first, then choose
+minimal test seams. Distinguish regression fidelity from measurement accuracy.
 ```
 
-See [independent task and protocol examples](docs/workbench-usage.md#example).
+More examples live in the [usage guide](docs/workbench-usage.md#example).
 
-### DSH (optional)
+### Tools without hardware
 
-The [DSH guide](docs/workbench-usage.md#dsh) documents the installer. `./install.ps1` installs the preset under `$DSH_HOME/.agent-presets/embedded` (default `~/.dsh/.agent-presets/embedded`). It replaces managed plugin/script/skill trees and removes skill directories outside its distribution list; back up customizations first. This is not a Codex installer.
-
-On Windows, `install.bat` is a double-click entry to the same installer. Choose the embedded preset in DSH. The current Windows MDK plugin offers `/build`, `/build -r`, `/build <alias>`, `/flash` and `/flash <alias>`. Build first, check its result, then invoke `/flash` separately when needed. Build/flash requires UV4, project configuration and the selected programmer; it is not supplied by copying skills. See [MDK usage (Chinese)](docs/mdk-build-flash.md).
-
-### Tool entry points without hardware
-
-Run from the repository root with Python 3.10+:
+From the repository root:
 
 ```sh
 python arm-cortex-expert/tools/stm32cli/stm32cli.py --help
@@ -95,28 +72,29 @@ python arm-cortex-expert/tools/map-parser/map-parser.py --help
 python embedded-test-engineer/scripts/check_state_model.py --help
 ```
 
-Actual queries need a CubeMX database; map analysis needs a build artifact. State-graph lint is an optional specialist tool requiring an explicit model. See the [runnable positive and negative examples](docs/workbench-usage.md#tools).
+Chip queries need a local CubeMX database; map analysis needs an existing build artifact. State-graph lint targets explicitly modeled waits and recovery — it is a specialist tool, not a substitute for runtime verification. Runnable positive and negative examples are in [tool trial](docs/workbench-usage.md#tools).
 
 ## Tools and dependencies
 
-| Tool | Requirements and reference |
-|---|---|
-| CubeMX query CLI | Python and a local CubeMX database; [reference](arm-cortex-expert/references/tools-stm32cli.md) |
-| Keil map parser | Python and an armlink map file; [reference](arm-cortex-expert/references/tools-map-parser.md) |
-| MDK wrapper/plugin | Windows, Keil UV4 and the selected flash backend; [guide](docs/mdk-build-flash.md) |
-| Optional state-graph linter | Python 3.10+ standard library; [format and limits](embedded-test-engineer/references/state-model-format.md) |
+| Capability | Path | Requirements |
+|---|---|---|
+| CubeMX query | `arm-cortex-expert/tools/stm32cli/stm32cli.py` | Python; local CubeMX database; [reference](arm-cortex-expert/references/tools-stm32cli.md) |
+| Keil map analysis | `arm-cortex-expert/tools/map-parser/map-parser.py` | Python; armlink map file; [reference](arm-cortex-expert/references/tools-map-parser.md) |
+| MDK build/flash | `scripts/mdk/` and `plugins/mdk/` | Windows, Keil UV4, chosen flash backend and target; [guide](docs/mdk-build-flash.md) |
+| Optional state-graph lint | `embedded-test-engineer/scripts/check_state_model.py` | Python 3.10+ stdlib; [format and limits](embedded-test-engineer/references/state-model-format.md) |
 
-Python 3.10+ is a common starting point for these tools. The recorded test environment is Python 3.14.2, not a full version/platform certification. Third-party compilers, databases and programmers are separately installed and licensed.
+Python 3.10+ is a practical baseline. The recorded tool test environment is Python 3.14.2; that is not a full version/platform certification. Third-party compilers, databases, and programmers are installed and licensed separately.
 
-## Contributing and evidence
+## Documentation and evidence
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for a lightweight workflow and [AGENTS.md](AGENTS.md) for AI collaboration rules. [Behavior scenarios](docs/skill-behavior-cases.md) are evaluation criteria, not evidence of completed device tests. The [audit record](docs/skills-audit-2026-09-08.md) describes checks actually performed.
+- [Install, use, update, and troubleshoot](docs/workbench-usage.md) (Chinese)
+- [Skill ownership and maintenance](docs/skills-integration.md) (Chinese)
+- [Architecture](docs/architecture.md) and [DSH integration](docs/dsh-integration.md) (Chinese)
+- [Integration record](docs/integration-2026-09-10.md) and [pre-release checks](docs/release-check-2026-09-10.md) (Chinese)
+- [Contributing](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for AI collaborators
+- [Behavior scenarios](docs/skill-behavior-cases.md) and the [2026-09-08 audit](docs/skills-audit-2026-09-08.md)
 
-See also the [architecture](docs/architecture.md), [DSH integration](docs/dsh-integration.md) and [current integration checks](docs/integration-2026-09-10.md) (Chinese).
-
-The [pre-release check record](docs/release-check-2026-09-10.md) lists the completed offline checks and remaining host/hardware validation (Chinese).
-
-A graph pass does not prove scheduler, DMA/cache, FPGA CDC or physical safety behavior. Query/map tools also need cross-checking against the actual project and vendor evidence.
+A graph pass does not prove scheduler behavior, DMA/cache correctness, FPGA CDC, or physical safety. Query and map tools must still be checked against the real project and vendor evidence. Claims about hardware need the matching tests.
 
 ## License
 

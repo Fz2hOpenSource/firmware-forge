@@ -1,6 +1,6 @@
 # DSH preset 集成说明
 
-`preset/agent.cordis.yml` 是工作台的运行时装配文件；它不是用户手册，也不应成为 Cordis 生命周期细节的唯一载体。本文件记录维护时必须理解的约束。
+`preset/agent.cordis.yml` 是工作台的运行时装配文件。本文记录维护该组合时必须遵守的约束。
 
 ## 文件职责
 
@@ -12,7 +12,7 @@
 
 ## host 与 isolate realm
 
-DSH 的注册表、sandbox、审批栈、模型路由和跨 session provider 属于 host。它们必须被本 preset 消费，而不是在 preset 内重新提供。反之，plan mode、compaction 与 workflow engine 是 agent 私有状态，放在 entry-local `isolate` realm。
+DSH 的注册表、sandbox、审批栈、模型路由和跨 session provider 属于 host。preset 消费这些服务，不在自身重新提供。plan mode、compaction 与 workflow engine 属于 agent 私有状态，放在 entry-local `isolate` realm。
 
 | 位置 | 这里的例子 | 原因 |
 | --- | --- | --- |
@@ -21,20 +21,20 @@ DSH 的注册表、sandbox、审批栈、模型路由和跨 session provider 属
 
 维护规则：
 
-- 新增的只是模型侧工具时，优先复用 host 注册表。
+- 新增模型侧工具时，优先复用 host 注册表。
 - 新增持久或状态型服务时，先确认它是否必须跨 session 可见；只有 agent 私有状态才放进 `isolate`。
 - provider 在 host 可用，不表示该 provider 自动暴露给本 preset；可选 provider 应维持显式 `disabled` 状态。
 
 ## Persona 契约
 
-persona 只规定工作方式：明确当前任务、沿用已有需求、按任务选择技能/命令/工具、适度设计与局部扩展、何时加载哪个技能、证据优先级、烧录前确认目标，以及长编译应后台执行。工具参数、格式细节和安全检查应由各自的 `SKILL.md`、插件或脚本承担，避免 persona 变成第二份不一致的操作手册。
+persona 只规定工作方式：明确当前任务、沿用已有需求、按任务选择技能/命令/工具、适度设计与局部扩展、证据优先级、烧录前确认目标，以及长编译后台执行。工具参数、格式细节和安全检查由各自的 `SKILL.md`、插件或脚本承担，避免 persona 变成第二份操作手册。
 
 ## 更新与兼容性
 
-修改 DSH 组合后，在发布前完成以下检查：
+修改 DSH 组合后，发布前完成以下检查：
 
 1. 用目标 DSH 版本启动 preset，确认没有 service registration / realm 冲突。
 2. 确认三个技能可见，`/build` 与 `/flash` 已注册，Windows 与非 Windows 的 shell 开关符合预期。
 3. 记录测试过的 DSH 版本与已知限制；`@deepseek-ai/dsh-*` 服务名或生命周期语义变化时，优先更新此文档和 smoke test。
 
-本仓库目前不宣称跨 DSH 版本的永久兼容性。升级 DSH 后，应先进行一次最小 smoke test，再向使用者推荐更新。
+本仓库不宣称跨 DSH 版本的永久兼容性。升级 DSH 后，先完成一次最小 smoke test，再向使用者推荐更新。
