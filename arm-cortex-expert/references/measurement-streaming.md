@@ -4,23 +4,24 @@ Read this reference for continuous acquisition, long-running upload, mixed ADC/F
 
 ## State Model and Liveness
 
-- Represent at least these concepts separately: configured, producer running, source valid, processed output ready, stream enabled, and transport connected. Do not collapse them into one boolean.
+- Distinguish configured, producer running, source validity, output readiness, stream enable and transport connection only where they can change independently under the product contract. These are questions to resolve, not six required stored flags or state machines. Derive values from authoritative state where possible.
 - A first-output timeout applies only before the first valid publication of a run. After publication begins, use a separate sustained no-progress rule with its own reason and recovery.
 - Temporary no-signal, saturation, invalid status, or profile warm-up should normally keep the service alive, publish explicit invalidity or withhold values according to the product contract, and recover automatically when valid input returns.
 - A single malformed, missing, or skewed sample group must not permanently poison synchronization. Drop/count it and re-establish alignment within a bounded number of events or time.
 - Define stop and disconnect independently: which producers stop, which configuration remains, which queues drain, and whether reconnect restarts upload automatically.
 
-## Transaction and Generation Rules
+## Configuration Boundaries and Generations
 
 - Validate an entire requested configuration before changing hardware or application state.
-- Quiesce affected producers, drain or invalidate queued work, apply hardware and algorithms, increment generation/epoch, and accept only matching-generation results.
+- For changes affecting active hardware or data interpretation, choose a verified application boundary: quiesce/drain when necessary, or use supported atomic/shadow configuration. Reject stale work by generation or another demonstrated isolation mechanism. An unrelated atomic parameter needs no stop/restart or new epoch.
 - Tag processed values with the measurement profile, source generation, context/calibration revision, and timestamp needed to prove they still match the active interpretation.
-- On failure, restore the last known-good configuration or enter a reported safe stopped state. Do not expose a partially committed configuration.
+- On failure, verify restoration or a stopped state before reporting it. If hardware effects cannot be confirmed, report uncertainty and follow containment/supervision policy; assigning SAFE or rolling back a software struct is insufficient. Preserve partial-effect evidence and reject unsafe new work.
 
 ## Rates and Capacity
 
 - Record raw event rate, algorithm/output rate, publication rate, upload rate, values per sample, batch size, and every producer that can feed a shared queue.
-- For each ring or queue, calculate `buffer_time = usable_items / worst_case_arrival_rate` and compare it with the longest measured or bounded consumer stall.
+- For each queue, record usable capacity C, worst occupancy Q before the stall, coincident burst B and bounded subsequent arrival rate r. A no-service stall T must satisfy `Q + B + ceil(r*T) <= C` with explicit margin; define B/r to avoid double-counting. `(C-Q-B)/r` is only the remaining stall allowance for r > 0, not an end-to-end latency bound. For variable service, bound cumulative arrivals minus guaranteed service over the relevant windows. Include descriptors and batch-fill delay, not just payload bytes.
+- Show consumer service headroom above sustained simultaneous arrivals and bound recovery from backlog. Account for interrupt masking, flash waits, locks, logging and scheduling in the stall bound; reserve control/deadline service under peak data traffic. Measure sustainable application link rate with framing and retransmission overhead instead of using PHY bitrate as capacity.
 - Include ISR work, copying, cache maintenance, filtering, serialization, network calls, diagnostics, transition bursts, and coincident producers in CPU and service-rate budgets.
 - Report utilization and headroom. A passing average rate does not explain burst stalls, repeated recovery cycles, or a ring that periodically reaches full.
 - Network batching changes latency and overhead; it is not filtering or decimation.
@@ -49,7 +50,7 @@ Read this reference for continuous acquisition, long-running upload, mixed ADC/F
 
 ## Verification
 
-- Test every supported rate and channel/value combination, including repeated stop/start and rate/profile changes.
+- Select tests by boundaries and interactions: maximum aggregate load, distinct clocks/DMA/resource regimes, independent vs shared channel lifecycles, repeated stop/start and rate/profile transitions. Exhaust small finite option sets when practical; do not demand a Cartesian product of all parameters without a risk-based reason.
 - Inject missing input, invalid status, source recovery, timestamp wrap, queue pressure, transport disconnect, and bounded consumer stalls.
 - Run long enough to expose counter wrap assumptions, clock drift, periodic storage/network stalls, and rare recovery paths.
-- Treat unexplained drops, repeated resynchronization, or queue growth as a failed capacity/liveness proof even if final average throughput is close to nominal.
+- Treat unexplained drops, repeated resynchronization, or queue growth as an unresolved capacity/liveness failure even if final average throughput is close to nominal.

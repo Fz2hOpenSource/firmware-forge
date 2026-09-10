@@ -9,10 +9,11 @@ Answer "what verification does this change need?" before writing any test.
 | Filter coefficients / calibration constants | L1 replay | Data replay regression against golden set with tolerance table |
 | Algorithm structure (filter topology, state machine) | L1 unit + replay | Host unit tests for branches, replay for numeric behavior |
 | Protocol parser | L1 unit | Frame-level host tests: valid, truncated, malformed, fuzzed inputs |
-| DMA configuration (channel, burst, buffer) | L2 + L3 | Driver seam tests for setup sequence; integration for overflow/handoff |
+| Protocol operation/state behavior | L1 sequences + relevant L3/L4 | Repeated commands, lost results, late completion, timeout/recovery budgets and resource ownership |
+| DMA configuration (channel, burst, buffer) | L2 + relevant L3/L4 | Seams check intended setup; target stress verifies actual DMA access, cache and handoff timing |
 | HAL / peripheral init code | L2 driver | Register write order via mock; error paths via stubs |
 | RTOS task / priority / queue changes | L3 integration | Deadlock, starvation, backpressure policy checks |
-| Linker script / memory placement | L1 logic + analysis | Map/mpu-check style static analysis plus L3 smoke |
+| Linker script / memory placement | Static analysis + relevant L4 | Map/MPU layout checks, then target DMA/cache smoke when placement affects hardware |
 | Compiler / toolchain version bump | full L1 + L3/L4 smoke | Existing suite green before anything else ships |
 | PCB revision / component swap | L4 HIL subset | Re-run hardware acceptance checklist |
 | Lifecycle loop changes (repeated init/cleanup, long-period tasks) | L2/L3 | Heap baseline regression: snapshot after cleanup must return to the recorded baseline |
@@ -21,24 +22,25 @@ Answer "what verification does this change need?" before writing any test.
 
 - **New feature**: write L1 tests for pure logic first; identify the HIL gap
   early and record it instead of discovering it at release time.
-- **Bug fix**: the regression test that reproduces the bug is written first
-  and must fail (red), then the fix turns it green. No red — no proof the
-  test bites. For hardware-nondeterministic failures where no deterministic
-  repro exists, a recorded diagnostic run or captured HIL evidence may
-  substitute; note the substitution explicitly in the test.
+  First establish expected behavior from current requirements. Skip mechanisms
+  the feature does not contain; do not invent concurrency or asynchronous state
+  merely to fit a test template.
+- **Bug fix**: when feasible, reproduce the failure on the old implementation
+  and confirm the correction passes the same test. A test written later can be
+  checked against the old version in isolation. For nondeterministic hardware
+  failures, retain captured diagnostic/HIL evidence and state the reproduction gap;
+  absence of a red test must not become a claim that the bug was proven fixed.
 - **Risk ranking**: when time is short, rank candidates by
   `regression probability × blast radius × detection difficulty` and cover
   the top first.
 
-## When NOT to Write a Test
+## Keep Verification Proportional
 
-- Trivial configuration constants with no logic.
-- Generator internals get no fine-grained unit tests — but generated output
-  still receives compile checks, configuration smoke tests, and integration
-  coverage.
-- One-shot diagnostic scripts.
-- Numeric pipelines: prefer one data replay set over dozens of hand-picked
-  input assertions — real recordings beat synthetic guesses.
+Skip dedicated tests for reversible low-impact edits with no meaningful regression
+risk. File type is not the criterion: a timeout constant, DMA flag or generator
+can change safety or timing behavior and need targeted validation. Check generated
+output and the failure-prone generator logic when applicable. Combine recorded
+replay with synthetic numeric boundaries; neither covers all risks alone.
 
 ## Interface With arm-cortex-expert
 

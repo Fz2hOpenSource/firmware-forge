@@ -4,13 +4,14 @@ description: >
   Design and implement firmware verification strategies: host-based unit
   testing, seams and test doubles, measurement data replay regression,
   driver isolation, integration test design, timing validation strategy,
-  and hardware-in-loop coverage planning for Cortex-M / STM32 projects.
+  protocol event-sequence and bounded-recovery tests, and hardware-in-loop coverage
+  planning for Cortex-M / STM32 projects.
 
   Use for: deciding what to test and at which pyramid layer, isolating
   logic from HAL for host builds, choosing stub/fake/mock, building
   golden-data replay for measurement pipelines (ADC/filter/calibration),
-  defining numeric tolerance rules, proving a change did not regress
-  accuracy, planning HIL coverage.
+  defining numeric tolerance rules, assessing numeric regressions and
+  accuracy evidence, planning HIL coverage.
 
   Do not use for: PCB electrical testing, oscilloscope methodology, EMC,
   mechanical testing, or feature code unrelated to verification.
@@ -21,10 +22,11 @@ description: >
 
 # Embedded Test Engineer
 
-Companion skill to `arm-cortex-expert`. That skill decides how reliable
-firmware is designed; this skill decides how that reliability is proven.
-Use both together on firmware projects: architecture rules come from the
-former, verification strategy comes from here.
+Verify the behavior the current requirements promise, at the lowest useful cost.
+Use `arm-cortex-expert` when platform implementation questions need it, and
+`embedded-protocol-designer` when interaction semantics need defining. Do not load
+all companions or build a full test framework for every small change. This skill
+remains usable alone with explicit architecture assumptions and hardware gaps.
 
 ## Scope Boundary
 
@@ -49,18 +51,23 @@ are out of scope.
   memory placement); this skill turns them into verification (overflow
   must trigger, buffer handoff must be asserted, drop counters must
   increment). If a verification target conflicts with an architecture
-  rule, the architecture rule wins — raise the conflict instead of
-  working around it.
+  rule, preserve the conflicting evidence and resolve it against user/project
+  requirements and applicable hardware specifications. Neither skill wording nor
+  a passing test may silently override those sources.
 - Keep outputs compatible with other active skills.
 
 ## Source Priority
 
 Prefer evidence in this order:
 
-1. Firmware project reality: sources, build system, compiler options, linker script.
-2. Existing test infrastructure: CMake, Ceedling, Unity, GoogleTest, pytest.
-3. Hardware specification: datasheet, timing requirements, protocol documents.
-4. General testing practice.
+1. Current user requirements and applicable project instructions.
+2. Product/protocol acceptance criteria and applicable hardware specifications.
+3. Implementation evidence: sources, build/link options, measurements and existing tests.
+4. Skill references and general testing practice.
+
+Requirements define expected behavior; code and tests reveal current behavior.
+Preserve and resolve discrepancies rather than treating a passing old test as the
+specification. Reuse the existing test infrastructure where suitable.
 
 State when a conclusion is general practice rather than grounded in the
 project's artifacts.
@@ -80,6 +87,12 @@ trigger:
    peripheral correctness, precision against standard sources.
 
 ## Coverage Philosophy
+
+For new work, confirm expected normal, repeated-input and failure behavior first.
+For local changes, test affected behavior and dependencies rather than every
+mechanism mentioned in a reference. Simple synchronous start/stop does not require
+an asynchronous request ledger; channels sharing a lifecycle need not each have a
+separate state machine. Add test machinery only when it protects a concrete risk.
 
 Prioritize failure-risk coverage over code-coverage percentage:
 
@@ -114,9 +127,10 @@ For measurement pipelines verify the whole chain:
   boundary and document the uncovered upstream stages explicitly.
 - Golden sets cover the operating envelope, not just happy-path data.
 - Tolerance policy is defined before test code is written.
-- Golden data updates require reason + expected behavior change +
-  old/new comparison + approval. Never update golden data to make a
-  failing test pass.
+- Golden updates need a justified expected-behavior change and old/new comparison,
+  with approval under the project's policy (including existing authorization).
+  A matching baseline shows regression fidelity; accuracy needs a traceable reference.
+  Never rewrite expectations solely to turn a failure green.
 
 See `references/data-replay.md`.
 
@@ -126,6 +140,28 @@ A passing unit test does not prove interrupt latency, DMA jitter, cache
 behavior, or peripheral timing. Those belong to L3 simulation or L4 HIL,
 and any timing claim must state its measurement means (DWT cycle counter,
 timer capture, trace).
+
+## Protocol State Verification
+
+Byte-level golden frames verify encoding, not interaction recovery. When commands
+span events, test real state logic with virtual time and reproducible event sequences:
+lost completion, duplicate requests, old epochs, cancellation races, full queues and
+recovery that also fails. Select only scenarios supported by current mechanisms.
+Read [protocol-state-testing.md](references/protocol-state-testing.md).
+
+For an explicit finite transition model, the optional standard-library Python 3.10+
+tool checks missing timeout exits, terminal reversal and timeout recovery cycles:
+
+```text
+python <this-skill>/scripts/check_state_model.py <model.json> --json
+```
+
+Read [state-model-format.md](references/state-model-format.md) before extracting a
+model from source. Resolve paths from this loaded skill directory. A graph pass is
+not a firmware, guard, scheduler or safety proof; never add fictional edges to pass.
+Use optional `--strict` when a gate must also stop on unresolved warnings; read the
+exit code or `gate_status`, since `status` retains the structural-error verdict.
+The tool's own tests live in `tests/test_state_model.py`; they do not test the device.
 
 ## Directory Convention
 
@@ -154,7 +190,8 @@ matrix and the MDK + CMake dual-build approach.
 
 ## Output Contract
 
-Every test proposal includes:
+Scale the proposal to the change; a small case can express the following in a few
+sentences rather than a full document:
 
 1. Test objective
 2. Risk being protected (what regression this prevents)
@@ -185,3 +222,5 @@ Read only what the task needs; do not bulk-load references:
 - Framework selection or host build setup → `references/frameworks.md`, `references/host-setup.md`
 - Measurement replay or tolerance definition → `references/data-replay.md`
 - Timing claims, simulation, HIL planning → `references/timing-and-hil.md`
+- Protocol liveness, repeated/late events, unknown outcomes → `references/protocol-state-testing.md`
+- Optional finite state graph lint and model limitations → `references/state-model-format.md`

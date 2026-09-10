@@ -6,16 +6,17 @@
   (for example 0x10 measurement control, 0x20 calibration, 0x30
   parameters) and leave gaps between blocks; renumbering commands after
   release is a breaking change.
-- Separate write and read commands (a `0x30 set` / `0x31 read` pattern).
-  Every mutable setting gets a read counterpart from day one — a
-  setting that can only be written forces blind configuration and
-  hides what the device actually stored.
+- Make effective settings observable where integration needs readback. Separate
+  read/write opcodes, a common config query, or dictionary access are possible;
+  do not require one extra command per setting. Specify whether a returned value
+  is requested, applied or observed, and its validity when those differ.
 
 ## Response Mapping
 
 - Define the response mapping as one rule plus explicit exceptions,
   published as a table. A common rule: response CMD = request CMD +
-  0x80.
+  0x80, only if the request range, width and reserved values prevent overflow
+  and collisions with responses, errors and unsolicited streams.
 - Exceptions are listed, not implied: the dedicated error-response
   command, active-upload stream frames. A rule-plus-exceptions model
   scales; per-command improvisation does not.
@@ -26,10 +27,10 @@ Choose one of two architectures — or mix them per function class — and
 state the choice in the protocol document:
 
 **Flat Command Model (CMD + SubCMD)** — best for simple devices.
-Grouped functions use `DATA = SubCMD (1 byte) + parameters`. An unknown
-CMD or unknown SubCMD must return the unknown-command error code,
-never silence; silence turns every host-side typo into a timeout retry
-loop.
+Grouped functions can use `DATA = SubCMD + parameters` with a declared SubCMD
+width. A valid addressed unicast request with unknown CMD/SubCMD returns the
+defined error when replies are legal. Broadcasts, streams and corrupt frames
+follow explicit no-reply/discard rules rather than this request/response rule.
 
 **Object Dictionary Model (Index + Sub-Index)** — best for scalable or
 complex devices (CANopen / IO-Link style). The protocol keeps a small
@@ -47,30 +48,33 @@ Object Dictionary table; an entry is not defined until it carries:
 Out-of-range or access-violating requests return a defined error code;
 reserved index ranges are documented like any other value.
 
-**Choosing.** Flat stays manageable up to roughly a couple dozen
-parameters. Move to a dictionary when the parameter set outgrows a
-flat listing, when generic configuration tools must browse parameters,
-or when firmware updates migrate parameter layouts. Mixing is allowed
+**Choosing.** Keep flat commands while they remain clear. Consider a dictionary
+when generic tools must discover parameters or measured maintenance needs justify
+it; parameter count alone is not an upgrade threshold. Mixing is allowed
 — control verbs often stay flat while tunable parameters live in the
 dictionary — but every command declares which space it belongs to.
 
 ## Request/Response Pairing Rule
 
-Every command documents BOTH its request frame and its response frame.
+Every request/response command documents BOTH its request frame and its response frame.
+Explicit no-reply operations, broadcasts and stream events document their own
+delivery and observation rules instead of inventing unsafe replies.
 A command described only by its response cannot be implemented by a
 host author without reverse engineering, and the gap surfaces late —
 usually during integration of an independent implementation.
 
 ## Error Taxonomy
 
-Define a cause-coded taxonomy at least this fine:
+Define only errors the product can emit, with actionable meanings. The following
+codes are illustrative, not a mandatory minimum or a reason to add storage/CRC
+replies. State-not-allowed does not authorize automatic retries:
 
 | Code | Meaning | Who fixes it |
 |---|---|---|
 | 0x00 | Success | — |
 | 0x01 | Unknown command | Host |
 | 0x02 | Parameter error | Host |
-| 0x03 | State not allowed | Host (retry after state change) |
+| 0x03 | State not allowed | Host (inspect current state and operation policy) |
 | 0x04 | Operation failed | Device / process |
 | 0x05 | Storage (flash) failure | Device |
 | 0x06 | CRC / frame error | Link or host |
@@ -83,10 +87,11 @@ lead to completely different user actions.
 
 - Put factory operations in their own command block (device serial,
   hardware version).
-- Declare field mutability explicitly: firmware version is decided by
-  firmware and read-only; serial numbers and hardware revisions are
-  factory-writable; nothing in production commands may touch
-  measurement behavior.
+- Declare identity mutability, access policy and persistence from manufacturing
+  requirements; serial/hardware identity may be immutable or provisionable.
+  Factory calibration can affect measurements: specify its allowed operating
+  conditions, application boundary and invalidation of old data. Do not infer
+  either write permission or absence of measurement effects from the command block.
 
 ## Streaming Data
 

@@ -2,7 +2,7 @@
 
 ## Family Notes
 
-- D-cache, memory domains, and DMA access rules are critical.
+- Identify the actual core(s), cache configuration, memory domains and selected DMA. Some H7 devices have an M4 companion; do not attribute the M7 cache to it, but include a cached peer when reviewing shared memory.
 - Verify the exact H7 subfamily and reference manual. DMA accessibility differs by memory region and DMA engine.
 - Many DMA engines cannot use every RAM region. Do not assume DTCM, AXI SRAM, SRAM1/2/3/4, and external RAM are equivalent.
 - Ethernet MAC DMA needs descriptors and buffers in DMA-accessible memory with cache coherency handled explicitly.

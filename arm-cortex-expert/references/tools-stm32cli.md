@@ -1,6 +1,4 @@
 # stm32cli — CubeMX Database Query Tool
-> 路径约定：本文件中的 `python tools/...` 为相对技能根目录的写法，运行前请先按 SKILL.md 的 **Tool Path Resolution** 解析为绝对路径。
-
 
 Companion CLI shipped in `tools/stm32cli/`. Resolve its absolute path via
 the skill's `Tool Path Resolution` rules. It is an experimental accelerator,
@@ -21,6 +19,11 @@ Use `stm32cli` to query STM32 chip-specific information from CubeMX database. Re
 - Debug or patch `stm32cli` itself only when the task explicitly includes improving the experimental tool; keep tool fixes separate from firmware diagnostic changes.
 
 ### CLI Commands
+
+Run the installed script's `--help` and relevant subcommand help first. Some versions
+also offer `chip --summary` and `ip-config`; use them only when present, preferring
+the exact MCU argument for IP lookup. Absence of an optional command is not a firmware
+defect; inspect the selected CubeMX XML instead.
 
 ```bash
 # Query chip info

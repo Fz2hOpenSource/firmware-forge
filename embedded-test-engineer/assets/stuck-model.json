@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "description": "Deliberate defect: every wait has a timeout and success exists, but recovery can loop forever.",
+  "initial": "WAIT_ACK",
+  "states": {
+    "WAIT_ACK": {"kind": "transient", "timeout": {"after_ms": 500, "to": "RECOVER"}},
+    "RECOVER": {"kind": "transient", "timeout": {"after_ms": 500, "to": "WAIT_ACK"}},
+    "DONE": {"kind": "terminal"}
+  },
+  "transitions": [
+    {"from": "WAIT_ACK", "event": "DONE_ACK", "to": "DONE"}
+  ]
+}

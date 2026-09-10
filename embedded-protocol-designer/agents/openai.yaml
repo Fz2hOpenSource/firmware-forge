@@ -1,0 +1,4 @@
+interface:
+  display_name: "Embedded Protocol Designer"
+  short_description: "从需求确定到简单协议开发、多通道扩展与状态交互设计审查"
+  default_prompt: "使用 $embedded-protocol-designer 先明确当前交互需求，再设计最小状态和命令约定，只在有实际需求时增加复杂机制。"

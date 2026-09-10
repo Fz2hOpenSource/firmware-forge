@@ -1,7 +1,7 @@
 interface:
   display_name: "ARM Cortex Expert"
   short_description: "Cortex-M firmware: DMA/ISR/cache/RTOS/LwIP boundaries"
-  default_prompt: "Use $arm-cortex-expert for Cortex-M firmware design/review using the complexity ladder, hard safety boundaries, DMA, ISR priorities, cache coherency, RTOS/CMSIS boundaries, LwIP/Ethernet integration, and buffer ownership."
+  default_prompt: "Use $arm-cortex-expert to implement the smallest Cortex-M design meeting current requirements, preserving DMA/ISR/cache ownership and bounded state-transition exits."
 
 policy:
   allow_implicit_invocation: true

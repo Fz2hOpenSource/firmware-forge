@@ -1,83 +1,85 @@
 # Device States and Link Timing
 
-## State Machine
+## Minimum State Model
 
-- Define named device states (for example IDLE / RUNNING / CALIBRATION
-  / ERROR), the transitions between them, and which command triggers
-  each transition.
-- Document entry actions that reset pipeline state: filters cleared,
-  counters zeroed, buffers released. Hosts reason about data validity
-  through these boundaries.
+Read `requirements-and-growth.md` for simple development and channel expansion.
+Create a state when future behavior must remember a distinct operating condition
+or a real asynchronous wait. Keep rate/channel selection as configuration and retry
+count as bounded operation context where their behavior permits it. These still
+have state space; changing an enum to flags does not remove complexity.
 
-## Permission Matrix
+Define one writer per authoritative field/domain. Derive busy/ready flags where
+possible instead of maintaining independent writable copies. Separate device mode,
+link reachability, data validity, operation phase and hardware observations only
+where the requirements distinguish them; they need not become separate managers.
 
-- Build a matrix of states × command classes with allow/deny per cell,
-  published in the protocol document.
-- Denials return the state-not-allowed error code. Silent ignore makes
-  hosts poll blindly and blame the link.
-- Typical invariant: while measuring, deny parameter changes, factory
-  configuration, and calibration. Mid-run mutation corrupts filter
-  continuity and invalidates calibration; the gate exists to make the
-  failure impossible rather than detectable.
-- Recovery commands (soft reset, clear error) document exactly what
-  they preserve and what they wipe — ambiguity here turns a recovery
-  attempt into data loss.
+An IDLE/RUNNING design can suffice when start/stop are bounded and failures leave a
+confirmed state. Add STARTING/STOPPING only when the operation spans processing
+turns. Unknown physical outcome cannot be concealed by assigning IDLE.
 
-## Initiation Model
+## State × Input Behavior
 
-State the model in the protocol document; it decides who may transmit
-and when:
+For the affected states and commands, specify accept, reject, merge, defer or ignore.
+Deferral needs capacity and expiry. Repeated STOP may share the active stopping
+operation; START while stopping may return BUSY. Choose and document behavior.
 
-- **Master-Slave Polled**: one master initiates every exchange; devices
-  never transmit unsolicited frames except declared streams. The
-  natural fit for shared half-duplex buses (RS-485 multi-drop).
-- **Event-Driven / Standalone**: the device uploads without being
-  polled. Define what triggers an upload (event thresholds, state
-  changes) and/or fixed broadcast intervals. On a shared multi-drop
-  bus this is safe only with time-slot allocation or arbitration;
-  free-form pushing is safe only on point-to-point full-duplex links.
-- **Hybrid**: polled request/response coexists with declared periodic
-  or event-driven streams; declare which traffic belongs to which
-  side.
+Valid addressed unicast commands denied by current state return a defined error.
+Broadcasts, malformed frames and protocols that forbid replies need their own
+silence/discard rules; replying indiscriminately can cause bus collisions.
 
-## Timing Contract
+Classify each parameter change: permitted immediately, applied at a verified
+boundary, or forbidden while running. Rate/filter changes may need a controlled
+transition; an unrelated display preference may not. Calibration/factory operations
+follow product requirements rather than a universal measurement-time ban.
 
-- For polled exchanges, response deadline: after N milliseconds without a
-  response, the host treats the exchange as failed. Derive N instead of
-  guessing — longest-frame transmission time both ways at the configured
-  baud rate, plus worst-case device processing time, plus scheduling
-  margin (500 ms is a workable starting point for low-speed UART links).
-- Retry cap: retransmit at most M times (3 is typical); after the cap,
-  declare the device offline instead of retrying forever.
-- Liveness (heartbeat): an event-driven device that nobody polls must
-  still prove it is alive. Define the heartbeat interval, its content
-  (a status word plus an uptime or sequence counter; it may share the
-  status-data frame), and how many missed periods mark the device
-  offline (three consecutive periods is typical). These constants
-  belong in the document, not in each implementation.
-- Active-upload streams are exempt from the request/response deadline —
-  they are not responses — but get their own liveness rule (maximum
-  inter-frame gap before the host declares the stream dead).
-- Per-command overrides of the default deadline are allowed but must be
-  stated per command in the document, never discovered on the bus.
+Document which filters, buffers, counters and configuration survive start, stop,
+disconnect and reset. Publish only confirmed effects; continuity choices must match
+measurement meaning, not accidental variable initialization.
 
-## Line Discipline and Turnaround
+## Delivery and Initiation
 
-- Under a master-slave model on half-duplex multi-drop links (RS-485),
-  only the master initiates; state turnaround expectations (response
-  latency bounds, inter-frame gaps) so driver authors can schedule
-  line-direction switches and timeouts from the document alone.
-- Under an event-driven model on a shared multi-drop bus, time-slot
-  allocation or arbitration must be defined before multiple talkers
-  are enabled.
-- On point-to-point full-duplex links, either side may transmit within
-  the declared model — say so explicitly rather than leaving it
-  implied by the schematic.
+- **Polled/master initiated:** define legal requesters, bus access and turnaround.
+- **Periodic/current value:** define update period, maximum age and missing-data
+  behavior. If old values can be superseded, avoid per-update transaction retries.
+- **Event/transaction:** if every occurrence or effect matters, define identity,
+  delivery/retention and duplicate semantics; the next update cannot replace it.
+- **Hybrid:** classify traffic and bound interference. Waveform upload cannot
+  indefinitely delay STOP, status or error reporting.
 
-## Why Timing Belongs in the Document
+Multi-transmitter shared links require a defined access mechanism. Use the chosen
+transport's arbitration where applicable; do not impose UART/RS-485 assumptions
+on CAN or full-duplex links. Event-driven does not imply unregulated bus access.
 
-Without a deadline, a hung device hangs the host thread indefinitely;
-without an offline verdict, every consumer invents its own; without a
-liveness rule, a standalone device dies silently. A short timing
-section prevents all three — and prevents each side from
-"temporarily" picking different constants.
+## Timing and Failure
+
+Derive exchange deadlines from serialization, turnaround, worst device work, bus
+load, task scheduling and margin. Example constants are not defaults. Distinguish
+receipt/acceptance deadline from long-operation completion and stream freshness.
+Specify the clock/unit and budget source; do not compare PC wall time directly to
+MCU ticks. Counter wrap and reboot invalidate naive time comparisons.
+
+At an exchange timeout, the host has not obtained the promised response in time.
+That does not establish whether the command took effect. Classify command semantics
+before retrying: repeated requests may be harmless, deduplicated, queryable, or
+unsafe to repeat. Define which layer owns retries, maximum attempts and a total
+deadline that is not refreshed by partial responses or nested recovery.
+
+Reachability/offline status is a separate assessment based on expected contact and
+freshness. One failed command may coexist with valid telemetry; stopped streaming
+may be intentional. When heartbeat is necessary it may share a status frame; a
+periodic polled exchange may already provide the needed evidence. Heartbeat does
+not by itself prove acquisition progress or hardware safety.
+
+For every temporary wait declare the completion evidence, timeout result, and
+applicable cancel/disconnect/restart behavior. A timeout clause is a requirement,
+not proof that firmware can process it: the implementation review must check
+blocked drivers, queue saturation, timer delivery and scheduling. Recovery has a
+bounded endpoint; when safety cannot be confirmed, report that fact explicitly.
+
+## Line Discipline
+
+For half-duplex links specify direction switching, legal initiators, inter-frame
+gaps, reply/broadcast rules and processing latency. For mixed streaming/control,
+specify bounded bursts or arbitration and measure control latency at maximum load.
+
+For asynchronous outcomes, restart and lost completion use `operation-lifecycle.md`.

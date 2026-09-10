@@ -1,82 +1,56 @@
-# Measurement Data Replay and Accuracy Regression
+# Measurement Replay: Regression and Accuracy Evidence
 
-The instrument-team method for proving "this change did not degrade
-accuracy": feed recorded real-world data through the pipeline and compare
-engineering outputs against an approved baseline.
+Replay recorded inputs through the real implementation to detect behavior changes.
+Agreement with an approved baseline establishes regression fidelity, not absolute
+measurement accuracy: both versions can share a bias. Accuracy claims require a
+traceable reference input and its uncertainty, plus target/sensor-chain validation.
 
-## Pipeline Under Test
+## Boundary and Recording
 
-```text
-recorded raw codes → filter → calibration → compensation → engineering value
-```
+Use the earliest stable captured boundary, for example
+`raw codes → filter → calibration → compensation → engineering value`.
+List upstream stages that the capture cannot exercise. Run the actual C/C++ logic
+through a host build or exported target output; a Python reimplementation alone
+does not test the firmware. Python can analyze outputs independently.
 
-Feed data from the earliest stable boundary available — raw codes rather
-than pre-computed engineering values — so every stage of the chain is
-re-verified, not just the last one. When earlier stages genuinely cannot
-be captured, replay from the first stable boundary and document the
-uncovered upstream stages explicitly in the test.
+Keep a versioned binary/text recording with the metadata needed to interpret it:
+layout, channel mapping, units/gain/range, timestamps or sample timing, calibration
+revision, baseline firmware, provenance and content hash. Include temperature when
+it affects the claim. Mark unavailable metadata instead of guessing it. Record
+initial filter state, gaps and validity as applicable; pin external artifact versions.
 
-## Recording Spec
+## Cases and Oracles
 
-Binary stream of raw ADC codes plus a metadata header (JSON sidecar or
-prefixed block). Required metadata:
+Select recorded normal and difficult segments plus synthetic boundary vectors:
+zero, mid/full scale, clipping, steps, drift, missing input, reset and recovery as
+relevant. Recordings expose real noise; synthetic cases expose rare precise faults.
+For stateful pipelines test chunked vs continuous replay, warm-up, reconfiguration,
+state inheritance and generation changes when supported.
 
-- device/sensor model, gain and range configuration
-- sample rate, channel map
-- ambient temperature (and sensor temperature if available)
-- recording timestamp, duration, sample count
-- firmware baseline version that produced the recording
-- data format version (layout can evolve; readers must detect it)
+Use requirement-derived oracles as well as the baseline. Mean/std/p2p alone can
+miss channel swaps, timestamp shifts or a lost step; check sequence, metadata and
+invalidity semantics before aggregate metrics.
 
-Store checksums with each recording. Large sets may live in LFS or an
-artifact store; the test must reference an exact version.
+## Tolerance Policy
 
-## Golden Set Coverage Matrix
+- State tolerance and units before comparing. One possible rule is
+  `abs(candidate-reference) <= atol + rtol*abs(reference)` with range-specific
+  bounds where required. Define NaN/Inf, saturation and invalid-sample handling.
+- Deterministic IIR replay with the same input, initial state and arithmetic can
+  use sample-level comparisons (with justified numeric tolerance). Stateful does
+  not imply statistics-only testing; compiler/FPU changes may need other tolerances.
+- Check steady-window bias/noise and bounded settling/step response as required.
+  Define window and alignment from the contract; do not shift results or discard
+  transients after seeing failures to conceal latency or instability.
+- Keep baseline deviation distinct from error against a calibrated reference.
 
-A golden set is never just "normal" data:
+## Report and Baseline Changes
 
-- zero input / static noise floor
-- full scale and clipping/saturation behavior
-- mid-range linear region
-- temperature-drift segments (cold/soak/hot as available)
-- optional: injected fault recordings (glitches, dropouts) for filter
-  recovery checks
+For each relevant case report recording/version, metric, reference or baseline,
+candidate, tolerance, verdict and uncovered hardware assumptions. A small change
+needs only affected cases, not a mandatory full measurement report.
 
-## Tolerance Policy (define before writing test code)
-
-- Combine **absolute + relative** tolerance so near-zero outputs do not
-  explode relative error.
-- Segment tolerances by range where accuracy specs vary.
-- For stateful filters (IIR), assert statistics on a steady-state window —
-  mean error, standard deviation (e.g. 3σ bound), peak-to-peak — not
-  sample-by-sample equality.
-- Bound convergence time (samples/seconds to settle within band) when the
-  pipeline is stateful.
-- A regression metric set covers: **accuracy** (mean error),
-  **repeatability** (std deviation), **noise** (peak-to-peak),
-  **drift** (slow trend), **convergence time**.
-
-## Regression Report
-
-For each golden case, old vs new baseline on the same recording:
-
-| Case | Metric | Baseline | Candidate | Tolerance | Verdict |
-|---|---|---|---|---|---|
-| mid-range 10 mV | mean error | 0.000008 | 0.000009 | ±0.000010 | PASS |
-| full scale | p2p noise | 0.9 | 1.4 | ≤1.5 | PASS |
-
-Output the full table plus a human-readable diff summary; a bare
-pass/fail is not a reviewable regression report.
-
-## Golden Update Procedure
-
-Golden data is immutable without approval. An update requires:
-
-1. Reason (why the old expectation is no longer correct)
-2. Expected behavior change stated before comparing
-3. Old/new comparison report attached
-4. Explicit approval
-
-Never update golden data to make a failing test pass. If the failure is a
-real regression, fix the code; if the old golden was wrong, fix it through
-this procedure.
+Keep old golden data and the comparison. Change expectations only when requirements
+or evidence justify it; explain the expected change and follow project approval
+policy, honoring authorization already given. Do not regenerate golden data from
+candidate output merely to silence a failed assertion.

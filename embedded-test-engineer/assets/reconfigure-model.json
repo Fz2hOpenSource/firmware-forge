@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "description": "Illustrative single reconfiguration request, not target firmware timing. Terminal records do not prove hardware safety.",
+  "initial": "IDLE",
+  "states": {
+    "IDLE": {"kind": "stable"},
+    "QUIESCE": {"kind": "transient", "timeout": {"after_ms": 50, "to": "CONTAIN"}},
+    "APPLY": {"kind": "transient", "timeout": {"after_ms": 100, "to": "CONTAIN"}},
+    "VERIFY": {"kind": "transient", "timeout": {"after_ms": 100, "to": "CONTAIN"}},
+    "START": {"kind": "transient", "timeout": {"after_ms": 200, "to": "CONTAIN"}},
+    "CONTAIN": {"kind": "transient", "timeout": {"after_ms": 100, "to": "INDETERMINATE"}},
+    "SUCCEEDED": {"kind": "terminal"},
+    "FAILED_SAFE_CONFIRMED": {"kind": "terminal"},
+    "INDETERMINATE": {"kind": "terminal", "description": "Request no longer auto-retries; independent safety supervision continues. Hardware safety is NOT confirmed."}
+  },
+  "transitions": [
+    {"from": "IDLE", "event": "ACCEPTED_RECONFIGURE", "to": "QUIESCE"},
+    {"from": "QUIESCE", "event": "MATCHING_QUIESCED", "to": "APPLY"},
+    {"from": "APPLY", "event": "MATCHING_APPLIED", "to": "VERIFY"},
+    {"from": "VERIFY", "event": "MATCHING_VERIFIED", "to": "START"},
+    {"from": "START", "event": "MATCHING_FIRST_VALID_DATA", "to": "SUCCEEDED"},
+    {"from": "QUIESCE", "event": "FAILURE", "to": "CONTAIN"},
+    {"from": "APPLY", "event": "FAILURE", "to": "CONTAIN"},
+    {"from": "VERIFY", "event": "FAILURE", "to": "CONTAIN"},
+    {"from": "START", "event": "FAILURE", "to": "CONTAIN"},
+    {"from": "CONTAIN", "event": "MATCHING_SAFE_OBSERVATION", "to": "FAILED_SAFE_CONFIRMED"}
+  ]
+}

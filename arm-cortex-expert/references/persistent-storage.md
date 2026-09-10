@@ -4,7 +4,7 @@ Read this reference for external SPI/QSPI flash, persisted settings or calibrati
 
 ## Ownership and Scheduling
 
-- Give each storage bus and device one transaction owner. Serialize command, address, data, and completion polling as one logical transaction.
+- Give each storage device a logical operation owner and each shared bus an arbitration policy. Keep command/address/data and chip-select lifetime intact. Device-busy time need not reserve the whole bus: release it between complete status polls only when the device/protocol permits, while retaining device-operation ownership and the total deadline. Bound the impact on other bus users.
 - Never call erase/program, blocking status polling, filesystem work, or record validation from an ISR.
 - Bound lock acquisition, HAL operations, device-busy waits, and recovery. Record which stage failed and the underlying driver status.
 - Do not insert RTOS yielding into an existing blocking flash driver merely to improve responsiveness. First prove the device state machine, chip-select lifetime, bus ownership, timeout basis, and callers remain correct across preemption.
@@ -12,7 +12,7 @@ Read this reference for external SPI/QSPI flash, persisted settings or calibrati
 ## Record Integrity and Power Loss
 
 - Prefer versioned records with length, object identity, revision/sequence, payload CRC, and header/commit integrity.
-- Use A/B slots, append-only records, or another atomic commit scheme so interruption cannot destroy the last known-good value.
+- When requirements demand survival of interrupted writes, use A/B slots, append-only records or another justified commit scheme that preserves a valid previous record. Verify media erase/program granularity and commit-marker behavior under power loss; two logical slots in the same erased sector are not independent protection.
 - Write payload and provisional metadata before the final commit marker. On startup, scan and select only fully committed valid records.
 - Define sequence wrap and tie-breaking explicitly. Do not choose a record only because one raw unsigned sequence value is numerically larger.
 - Verify readback when the product risk warrants it; keep retry/readback failure distinct from successful persistence.
@@ -21,7 +21,7 @@ Read this reference for external SPI/QSPI flash, persisted settings or calibrati
 
 - Retry only failures believed transient, with a small bounded attempt count. CRC corruption, invalid schema, and incompatible version require explicit handling rather than endless rereads.
 - Track retry attempts, retry successes, final failures, CRC categories, last object, operation, stage, HAL status, timeout, and bus recovery result.
-- A recovery routine must restore peripheral/bus state before retrying and must not reset unrelated users silently.
+- Bus recovery does not establish whether the previous write/erase took effect. Query/read back or reconcile first when possible; replay only when the effect contract permits. A recovery routine must restore a known peripheral/bus state without silently resetting unrelated users, and stop with explicit uncertainty when verification fails.
 
 ## Persistence Semantics
 

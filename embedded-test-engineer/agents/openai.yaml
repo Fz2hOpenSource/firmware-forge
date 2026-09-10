@@ -1,0 +1,4 @@
+interface:
+  display_name: "Embedded Test Engineer"
+  short_description: "验证固件逻辑、协议状态退出、测量回放与真实硬件测试边界"
+  default_prompt: "使用 $embedded-test-engineer 为当前变更选择必要的验证，覆盖相关重复事件、超时和恢复失败，并说明实机验证缺口。"

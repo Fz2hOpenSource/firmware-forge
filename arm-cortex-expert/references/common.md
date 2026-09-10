@@ -37,14 +37,20 @@
 
 Use these as stop-points, not mandatory steps. Stop at the simplest tier that satisfies stated or measured requirements, and document the upgrade trigger when it matters.
 
+For an existing project, keep working infrastructure unless changing it solves the current requirement; the ladder is not an instruction to remove its RTOS, DMA or test framework. For new mechanisms:
+
 1. Can a bare-metal super-loop meet latency, jitter, and maintainability needs? If yes, skip RTOS.
 2. Can blocking, polling, or interrupt-driven I/O meet CPU load and jitter needs? If yes, skip DMA.
 3. Can a single buffer with clear ownership meet worst-case consumer latency? If yes, skip double buffers or rings.
 4. Can a non-cacheable DMA region be used on cacheable cores? If yes, skip per-transfer clean/invalidate, but still verify DMA access, alignment, MPU attributes, and cache-line isolation.
-5. Is integer or fixed-point accuracy below the measured noise/error budget? If yes, skip float/CMSIS-DSP. If the MCU has an FPU and float is measured safe, do not force fixed-point.
+5. Choose numeric representation from precision, overflow and measured CPU budgets. Keep a proven existing float or fixed-point path; neither a small noise floor nor an available library alone justifies converting it.
 6. Can a direct driver API preserve ownership and backpressure? If yes, skip framework, queue, network, or transport layers.
 
 ## Shared Workflow
+
+Establish current requirements before selecting mechanisms. For an extension, inspect
+only changed behavior and its dependencies first; do not reopen the whole design.
+For protocol-driven start/stop or transition failures, read `state-and-interaction.md`.
 
 1. Identify the peripheral path: source, trigger, bus, I/O mode, buffer, processing, and consumer.
 2. Identify rates separately: raw/input sample rate, processed output rate, upload rate, and publication divider.
@@ -55,19 +61,28 @@ Use these as stop-points, not mandatory steps. Stop at the simplest tier that sa
 
 ## Reconfiguration and State Continuity
 
-- Model profile, excitation, peripheral mode, filter, calibration, and rate changes as explicit transactions: validate first; quiesce affected producers; drain or invalidate old work; apply hardware and algorithm state; advance a generation/epoch; then publish the first valid result.
-- Tag queued samples, processed results, and application-visible snapshots with enough revision information to reject stale data after a transition.
-- Define separately which state survives stream stop/start, transport disconnect, source recovery, profile change, algorithm reset, software reset, and power cycle. Do not let incidental globals decide product behavior.
-- Preserve filter state only when sample timing, coefficients, units, calibration, and signal meaning remain compatible. Otherwise reset or transform it explicitly and expose warm-up/settle state.
-- A failed transition must leave the previous known-good state or a clearly reported safe stopped state; never continue with a partially applied configuration.
+- For changes that affect active hardware or data interpretation, define the transition explicitly: validate, quiesce affected producers when needed, drain or invalidate old work, apply and verify the configuration, then publish valid matching-generation data. Atomic unrelated settings need not stop the pipeline or introduce a transaction engine.
+- Tag queued samples, processed results, and stream configuration with enough generation information to reject stale data after a transition.
+- Define which state survives each event separately: TCP disconnect, stream stop/start, profile change, algorithm reset, peripheral recovery, software reset, and power cycle. Do not let accidental global state decide product behavior.
+- Preserve filter state only when sample timing, coefficients, units, calibration, and signal meaning remain compatible. Otherwise reset or transform state explicitly and expose warm-up/settle status.
+- Aim to preserve the previous confirmed state or reach a verified stopped state. If neither can be confirmed, report hardware uncertainty, inhibit unsafe work and invoke the product's containment policy; never claim SAFE merely by assigning an enum. Do not continue as if partially updated hardware were verified.
 
-## Streaming and Mixed Sources
+## Multi-Rate and Mixed-Source Pipelines
 
-- Keep source validity, processing readiness, stream running state, and transport connectivity separate. A temporary invalid source should not silently kill the service or require manual restart unless the product contract explicitly says so.
-- Separate startup first-output timeout from sustained no-progress detection. Recovery after a source returns must be bounded and observable.
-- For independently clocked sources, use timestamp/epoch association with a measured skew and history budget. A single incomplete group must be dropped or resynchronized without poisoning later groups.
-- Use wrap-safe unsigned time differences and an explicit "observed" flag. Do not use `UINT32_MAX` or another interval value as both data and invalid sentinel.
+- Keep raw/input rate, algorithm rate, publication rate, and transport batch rate as separate quantities. Apply anti-alias filtering before decimation; network batching is not filtering.
+- For independently clocked or independently delivered sources, match by hardware timestamp or explicit epoch and use a documented skew window. Never assume task wake order, queue adjacency, or equal nominal rate proves simultaneity.
+- Define incomplete-group behavior: wait within a bounded history window, drop and count, publish a marked partial result, or resynchronize. Avoid a single mismatch permanently poisoning later groups.
+- Expose baseline/delta-friendly diagnostics for publish interval, processing lag, candidate skew, accepted matches, incomplete groups, stale generations, overflow, backpressure, recovery, and first-valid-output timeout.
+- Validate steady-state throughput and transitions across required boundaries and distinct timing/resource regimes; exhaust finite small rate sets when useful. A long average rate can hide burst stalls, phase drift between producers, or repeated repair/drop cycles.
+- Keep source validity, processing readiness, stream running state, and transport connectivity separate. Temporary invalid input should recover without a mandatory restart unless the product contract explicitly requires a stop.
+- Separate startup first-output timeout from sustained no-progress detection, and keep "not observed" in an explicit validity flag rather than an interval sentinel.
 - For detailed capacity, recovery, association, and counter rules, read `measurement-streaming.md`.
+
+## High-Rate Capacity Audit
+
+For high-rate paths, use the arrival, service, occupancy and control-latency budgets
+in `measurement-streaming.md`. Nominal throughput or an empty-buffer fill time
+alone cannot establish that a loaded queue tolerates a consumer stall.
 
 ## ISR and Task Boundaries
 
@@ -90,7 +105,7 @@ Use these as stop-points, not mandatory steps. Stop at the simplest tier that sa
 
 - Identify the RTOS API surface before changing synchronization code: native FreeRTOS, CMSIS-RTOS v1, CMSIS-RTOS v2, or bare metal.
 - For CubeMX projects, inspect the `.ioc`, generated `freertos.c`, and included CMSIS headers to determine whether CMSIS-RTOS v1 or v2 is used.
-- When the user provides local official sources (for example a CMSIS_6 or CMSIS-FreeRTOS checkout), use them for CMSIS-Core/RTOS2 API definitions and the RTOS2-on-FreeRTOS adapter implementation; the target project's bundled `Drivers/CMSIS`, generated code, and `FreeRTOSConfig.h` still win.
+- Use the target project's bundled `Drivers/CMSIS`, generated code, and `FreeRTOSConfig.h` as the primary RTOS API source. If local CMSIS_6 or CMSIS-FreeRTOS copies are available, use them for CMSIS-Core/RTOS2 API definitions and the RTOS2-on-FreeRTOS adapter implementation; otherwise rely on vendor documentation.
 - When migrating CMSIS-RTOS v1 to v2, verify message queue semantics: v1 `osMessagePut/Get` commonly passes a `uint32_t` value or pointer, while v2 `osMessageQueuePut/Get` copies fixed-size messages from/to `msg_ptr`; for DMA buffers, queue a pointer or descriptor intentionally instead of copying large buffers.
 - Keep driver APIs usable from tasks/threads; provide separate ISR-safe notification functions when needed.
 - Verify the ISR-callable API subset, timeout rules, and object types for the selected RTOS layer.
@@ -105,7 +120,7 @@ Use these as stop-points, not mandatory steps. Stop at the simplest tier that sa
 Do not simplify away these checks or mechanisms:
 
 - ISR priority and RTOS syscall priority compliance, including `configMAX_SYSCALL_INTERRUPT_PRIORITY` for FreeRTOS-backed paths.
-- Cortex-M7/H7 DMA cache coherency, DMA-accessible memory placement, buffer alignment, and cache-line isolation.
+- DMA-accessible memory placement and ownership on every affected core; cache coherency and cache-line isolation where the actual core/region is cacheable (including shared memory accessed by a cached peer).
 - Explicit ownership for DMA buffers, descriptors, callbacks, queues, and application-visible data.
 - Overflow, timeout, DMA error, bus error, and dropped-frame counters or equivalent visibility.
 - DMA error callbacks and recovery behavior for acquisition paths.
@@ -130,7 +145,7 @@ Do not simplify away these checks or mechanisms:
 - Document filter reset behavior when sample/output rates change.
 - Distinguish raw ADC sample rate from filtered output/upload rate.
 - State filter group delay, transient/warm-up behavior, saturation/invalid-input policy, and whether runtime state is inherited across compatible configurations.
-- Before changing a filter to hide outliers, separate random noise, periodic interference, isolated impulses, true steps, slow drift, and calibration bias.
+- Before changing a filter to hide outliers, separate random noise, isolated impulses, true steps, slow drift, and calibration bias. A low-pass filter can reduce random noise but cannot prove or repair a systematic offset.
 - For detailed multirate, notch, circular phase, anomaly, and calibration-chain rules, read `measurement-dsp.md`.
 
 ## Intentional Simplification Comments

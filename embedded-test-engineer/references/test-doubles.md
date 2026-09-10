@@ -13,18 +13,19 @@ Hard rules:
 - Do not mock everything. Prefer real implementations when behavior is
   simple or integration is cheap.
 - Delete mocks whose maintenance cost exceeds their protective value.
-- **A test that only validates mocks is invalid.** If removing the mock's
-  canned answers makes the test meaningless, restructure the test.
+- A test needs an observable outcome from the code under test that can fail when
+  it is wrong. Depending on canned stub inputs is normal; asserting only the
+  double's own behavior does not validate the production logic.
 
 ## Seams in C/C++
 
 A seam is a place where behavior can change without editing source.
 
 ### Linker seam (`--wrap=symbol`)
-GCC resolves references to `symbol` as `__wrap_symbol`; `__real_symbol`
-reaches the original. Strongest pure-C tool; no source edits.
-Pitfall: only works across translation units — same-file calls never reach
-the linker.
+GNU ld rewrites undefined references to `symbol` as `__wrap_symbol`, and
+`__real_symbol` to the original. Calls resolved inside a translation unit are not
+wrapped. Confirm the linker supports this option and that the optimized test
+binary actually calls the replacement. See [GNU ld --wrap](https://sourceware.org/binutils/docs/ld/Options.html#index-_002d_002dwrap_003dsymbol).
 
 ### Function-pointer seam
 HAL calls go through stored pointers; tests repoint them at runtime.
@@ -32,13 +33,15 @@ Portable to every compiler (MSVC/IAR included). Cost: indirection in
 production code and weaker readability.
 
 ### Weak-symbol seam
-Production defines `__attribute__((weak))` implementations; strong test
-definitions override them. Solves same-file replacement. Pitfall: symbol
-resolution confusion in large trees; not supported by every toolchain.
+A supported weak external definition can be overridden by a strong test definition.
+Do not assume this replaces every same-file call: static linkage, inlining, LTO,
+archive selection and compiler/linker rules matter. Verify the final symbol/call
+path with the real build options; use an explicit seam when resolution is uncertain.
 
 ### Object seam (C++)
 Pure-virtual interface injected by constructor/setter; native GMock support.
-Cleanest architecture; C++ only, small vtable cost.
+Useful when the project already benefits from an injected C++ interface; it is not
++a reason to migrate a small C module or add virtual dispatch solely for testing.
 
 ## Anti-Patterns
 

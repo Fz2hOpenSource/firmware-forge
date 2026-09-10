@@ -1,53 +1,47 @@
-# Timing Validation, Simulation, and HIL Planning
+# Timing, Simulation and HIL Evidence
 
-Functional correctness and timing correctness are different claims. A
-green unit suite proves neither interrupt latency, nor DMA jitter, nor
-cache effects, nor peripheral protocol timing.
+Choose the cheapest layer that can exercise the requirement. Passing examples
+establish evidence within their inputs and model; they do not prove every possible
+schedule or a physical worst-case bound.
 
-## Which Layer Can Prove What
-
-| Indicator | Provable at |
+| Claim | Useful evidence and boundary |
 |---|---|
-| Retry/backoff durations, debounce logic (logical ticks) | L1 with fake tick injection |
-| Scheduling behavior, deadlock/starvation, timeout logic at scale | L3 simulation (virtual time) |
-| Register-level integration defects, multi-node exchanges | L3 (Renode, unmodified ELF) |
-| ISR latency, DMA jitter, cache misses' impact | L4 HIL only |
-| Peripheral protocol timing (setup/hold, sample instant) | L4 HIL only |
+| Retry/debounce/deadline arithmetic | L1 virtual ticks, wrap and same-tick races; actual scheduling separate |
+| Task interaction, deadlock/starvation scenarios | L3 controlled schedules/faults; model coverage and scheduling assumptions explicit |
+| Register-level integration | L3 with applicable modeled peripherals; missing model behavior remains a hardware gap |
+| ISR latency, DMA/cache interference | L4 under defined target load; measured max is not a universal WCET proof |
+| Setup/hold, sample instant, analog accuracy | L4 with appropriate instruments/reference and uncertainty |
 
-## Simulation Positioning
+## Use Existing Simulation Where It Fits
 
-- **Renode**: runs the production cross-compiled ELF unmodified; given
-  identical platform models and inputs, execution is instruction-level
-  deterministic and reproduces the same trace across runs — external
-  inputs (timers, radios, real peripherals) break determinism, so pin
-  them in the model; multi-node boards/links; GDB-attachable. Good for
-  register-level integration defects without hardware.
-- **Zephyr native_sim**: compiles kernel + app as a host program; virtual
-  time decoupled from wall clock (hours of timeouts in seconds); drives
-  ZTest suites over full RTOS stacks.
+Renode can execute target binaries with a suitable platform/peripheral model.
+Verify support for the exact peripherals and version before claiming production
+ELF compatibility; control external inputs and preserve the model/test setup for
+repeatability. It does not supply every STM32/FPGA model automatically. See
+[Renode platform descriptions](https://renode.readthedocs.io/en/latest/advanced/platform_description_format.html).
 
-Both are L3 evidence. Neither substitutes L4 for analog/timing claims.
+Zephyr native_sim builds a Zephyr application for host execution with simulated
+time and hardware support. It does not run an arbitrary FreeRTOS firmware unchanged;
+do not migrate the product merely to obtain tests. See
+[Zephyr native_sim](https://docs.zephyrproject.org/latest/boards/native/native_sim/doc/index.html).
 
-## Hardware-Assisted Tests (L4)
+For MCU/FPGA interaction, retain relevant RTL simulation/CDC checks and tests of
+independent reset, mailbox coherence and delayed completion. Host state tests
+cannot establish physical CDC or bus timing correctness.
 
-Typical patterns for measurement systems:
+## Target Scenarios
 
-| Type | Example |
-|---|---|
-| Signal source | Calibrator/DAC feeds known waveform into ADC input |
-| Time/frequency | Signal generator outputs known 10 kHz; MCU/FPGA counter measures it; verdict computed in ppm automatically |
-| Communication | PC script acts as protocol host: scripted sequences, malformed frames, timing pressure |
-| Precision | Standard source at zero/mid/full scale; engineering output must meet accuracy spec |
-| Trigger/latency | GPIO loop-back or timer capture measuring ISR-to-output delay |
+Select from current risks: reference signal at zero/mid/full scale, known frequency,
+control traffic during maximum upload, bounded stop latency, storage stalls,
+independent resets and recovery failure. No single scenario or a live heartbeat
+establishes that all subsystems are progressing.
 
-## HIL Report Requirements
+Each report states hardware/firmware revision, measurement means and clock basis,
+load/fault conditions, sample count, min/max/distribution, threshold traced to a
+requirement and instrumentation limitations. A cycle-counter result also needs
+counter availability, wrap and clock/sleep behavior considered. State whether a
+bound is analytic, model-derived or the maximum observed in the run.
 
-Every timing/HIL claim states:
-
-1. Measurement means (DWT CYCCNT, timer capture, ITM trace, instrument model)
-2. Repeat count and statistics (min / max / mean), not a single lucky run
-3. Pass thresholds traced back to requirement values
-4. Firmware version and hardware revision under test
-
-Scope note: this skill plans what HIL must show and how results are judged;
-operating lab instruments is the engineer's job.
+Plan the remaining HIL work when equipment or evidence is unavailable. Do not mark
+unexecuted tests as passed; use connected equipment only within the user's actual
+scope and authorization. Electrical measurement methodology is outside this skill.

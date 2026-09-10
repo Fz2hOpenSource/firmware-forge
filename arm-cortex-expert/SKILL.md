@@ -5,7 +5,7 @@ description: >
   complexity ladder that avoids over-engineering while preserving hard safety
   boundaries for DMA, ISR/callbacks, interrupt priorities, cache coherency,
   RTOS task/thread boundaries, buffer ownership, peripheral driver structure,
-  and LwIP/Ethernet integration. Covers FreeRTOS, CMSIS-RTOS v1/v2, and
+  bounded state transitions, and LwIP/Ethernet integration. Covers FreeRTOS, CMSIS-RTOS v1/v2, and
   bare-metal projects.
 
   Use for acquisition, high-rate peripherals, DMA buffers, ISR/task handoff,
@@ -45,25 +45,26 @@ sizing in this skill.
 
 Prefer evidence in this order:
 
-1. The current user request and applicable project-local instructions such as `AGENTS.md`.
-2. Project-owned architecture, protocol, and test specifications, followed by code, schematics (for firmware-relevant facts), CubeMX `.ioc`, linker scripts, build settings, logs, and measurements.
+1. Current user requirements and applicable project instructions.
+2. Project-owned architecture, protocol and test specifications, alongside code, schematics (for firmware-relevant facts), CubeMX `.ioc`, linker scripts, logs and measurements.
 3. Vendor reference manuals, datasheets, errata, HAL/LL documentation, and RTOS/LwIP documentation.
 4. Local skill references in `references/`.
 5. General Cortex-M heuristics.
 
-State when a conclusion is an inference from general rules rather than proven by project artifacts. When sources conflict, preserve the conflicting revisions, values, and observed behavior; state which source controls the current decision and what evidence would resolve the conflict. Do not silently merge contradictions.
+State when a conclusion is an inference rather than proven by project artifacts. Preserve conflicting requirements and behavior with their locations/revisions; identify what evidence resolves the disagreement. A skill rule must not silently override a product requirement or vendor hardware constraint.
 
 ## Read Order
 
 1. Read `references/common.md` for shared workflow rules.
-2. Read exactly one core file from `references/cores/` when the CPU class is known.
-3. Read exactly one family file from `references/families/` when the MCU family is covered.
-4. Read [`references/measurement-streaming.md`](references/measurement-streaming.md) for continuous acquisition, mixed sources, start/stop recovery, rate changes, buffering, or long-running streams.
-5. Read [`references/measurement-dsp.md`](references/measurement-dsp.md) for filtering, decimation, anomaly handling, calibration/zero ordering, or phase/frequency processing.
-6. Read [`references/persistent-storage.md`](references/persistent-storage.md) for external flash, persisted settings/calibration, SPI storage concurrency, retries, or power-loss behavior.
-7. Read `references/lwip-ethernet.md` when the task involves LwIP, Ethernet, TCP/IP upload, `netif`, `pbuf`, or STM32 ETH DMA.
-8. If the MCU family is not covered, skip family references and rely on project/vendor evidence.
-9. Do not load unrelated reference files during ordinary firmware work. When auditing this skill itself, reading all resources is acceptable.
+2. Read the core file(s) for the execution domains affected by the task. A dual-core device may need both; a change confined to one core usually does not.
+3. Read the applicable family file when covered; verify the exact part and core instead of inferring cache or DMA behavior from the family name.
+4. Read [state and interaction execution](references/state-and-interaction.md) for start/stop, asynchronous control, blocked transitions, retries, or MCU/FPGA completion handling.
+5. Read [measurement streaming](references/measurement-streaming.md) for continuous acquisition, buffering, mixed sources, rate changes or first-valid-output recovery.
+6. Read [measurement DSP](references/measurement-dsp.md) for filters, decimation, calibration/zero ordering or phase/frequency processing.
+7. Read [persistent storage](references/persistent-storage.md) for settings/calibration persistence, flash concurrency or power loss.
+8. Read [CubeMX guide](references/cubemx-guide.md) for `.ioc`, generated configuration or database lookup.
+9. Read `references/lwip-ethernet.md` for LwIP, TCP/IP, `netif`, `pbuf`, or STM32 ETH DMA.
+10. If the MCU family is not covered, rely on project/vendor evidence. Read only the applicable references, not all of them on every task.
 
 ## Selection Guide
 
@@ -71,34 +72,32 @@ State when a conclusion is an inference from general rules rather than proven by
 - Cortex-M3: read [`cores/m3.md`](references/cores/m3.md).
 - Cortex-M4/M4F: read [`cores/m4-m4f.md`](references/cores/m4-m4f.md).
 - Cortex-M7/M7F: read [`cores/m7-m7f.md`](references/cores/m7-m7f.md).
-- STM32F4: also read [`families/stm32-f4.md`](references/families/stm32-f4.md).
-- STM32F7: also read [`families/stm32-f7.md`](references/families/stm32-f7.md).
-- STM32H7: also read [`families/stm32-h7.md`](references/families/stm32-h7.md).
-- STM32L0: also read [`families/stm32-l0.md`](references/families/stm32-l0.md).
-- STM32L4: also read [`families/stm32-l4.md`](references/families/stm32-l4.md).
+- STM32F4: also read [stm32-f4.md](references/families/stm32-f4.md).
+- STM32F7: also read [stm32-f7.md](references/families/stm32-f7.md).
+- STM32H7: also read [stm32-h7.md](references/families/stm32-h7.md).
+- STM32L0: also read [stm32-l0.md](references/families/stm32-l0.md).
+- STM32L4: also read [stm32-l4.md](references/families/stm32-l4.md).
 - nRF, SAMD, GD32, AT32, or other Cortex-M families: use this skill only for generic Cortex-M patterns unless vendor-specific files are added.
 
 ## Complexity Strategy
 
 Use `references/common.md` as the authoritative source for operating modes, the complexity ladder, and non-negotiable firmware boundaries. In ordinary work, read it first, stop at the simplest sufficient tier, and add complexity only when the project evidence or stated requirements justify it.
 
-## Judgment Rules
+## Requirements and Companion Skills
 
-- Prefer the simplest design that meets evidence. Add complexity only when it solves a measured or credible failure mode.
-- Treat third-party middleware, RTOS kernels, vendor libraries, and generated code outside supported user sections as read-only by default. Prefer documented configuration, hooks, callbacks, weak overrides, and project-owned adapters; require evidence and explicit user approval before patching middleware internals.
-- Keep diagnostic experiments reversible and hypothesis-scoped. Revert a failed or inconclusive change before testing an independent hypothesis; retain it only when the next test explicitly depends on it, and identify the test as a combined hypothesis.
-- Keep ISRs and DMA callbacks short: record status, swap/commit buffers, notify tasks, then return.
-- Do not place network transport, filtering, and low-level driver logic in the same module unless the user explicitly asks for a prototype.
-- Design for verifiability: business logic stays free of vendor headers and direct register access; hardware and time sources sit behind callable interfaces; add test seams only where verification value justifies them. The embedded-test-engineer skill builds on this structure.
-- Prefer fixed-size buffers and explicit ownership over hidden globals.
-- Use DMA when it reduces CPU load or jitter, but do not force DMA for low-rate paths where blocking or interrupt-driven I/O is simpler and safe.
-- Choose integer/fixed-point, float, or CMSIS-DSP based on the MCU, FPU, rate, precision, and existing project code. Do not force fixed-point when the project has an FPU and measured float path is safe.
-- Treat Cortex-M7 cache maintenance, memory placement, and DMA accessibility as mandatory design topics, not afterthoughts.
-- For configurable sampling/upload rates, distinguish ADC/input sample rate from output/upload rate and document filter/decimation behavior.
-- Treat profile, mode, calibration, and rate changes as transactions. Define validation, quiesce/drain, apply, generation advance, stale-result rejection, filter-state compatibility, rollback, and first-valid-output behavior.
-- Treat service availability and measurement validity as separate states. A missing or temporarily invalid source should recover without a mandatory stream restart unless a documented product safety rule requires a stop.
-- For independently clocked or delivered sources, associate data by hardware timestamp or explicit epoch with a measured skew/history budget. Do not join by task arrival order, queue adjacency, or nominally equal rates.
-- Keep time arithmetic wrap-safe. Represent "not observed" with explicit validity, not a numeric sentinel that can contaminate interval maxima or timeout logic.
+Confirm the current behavior before adding architecture. A bounded start/stop function
+and one state owner may suffice; add local asynchronous phases only for real waits.
+Synchronous channels can share a state machine and channel configuration; independent
+channels need local instances plus explicit shared-resource constraints. Do not
+mandate HSM, a manager task, queues, four configuration views or a transaction engine
+because future expansion is possible.
+
+The protocol skill defines public command/response and compatibility contracts; this
+skill implements them without blocking required progress or falsifying hardware
+state. The test skill checks logic, resources and timing at appropriate layers.
+Load a companion only when its part of the work is needed; do not require all three
+for a small patch. If companions are unavailable, state their relevant contracts
+and verification gaps locally.
 
 ## Output Contract
 
@@ -133,22 +132,13 @@ If reasonable assumptions are enough to proceed, state them and continue.
 Tool commands in this skill (`tools/stm32cli/...`, `tools/map-parser/...`) are written relative to this skill's root directory. The session working directory is normally the firmware project, so resolve tool locations explicitly before calling them:
 
 1. If the skill loader exposes this skill's base directory, prefer it.
-2. If the session workspace is this skill repository itself, the relative `tools/...` paths work as-is.
-3. When installed via the embedded workbench preset, the skill root is `%DSH_HOME%\.agent-presets\embedded\skills\arm-cortex-expert` (`DSH_HOME` defaults to `%USERPROFILE%\.dsh`).
-4. Otherwise, ask the user where this skill is checked out.
+2. Resolve from this loaded `SKILL.md` directory. In the workbench source repository this is `arm-cortex-expert/`, not the repository root.
+3. A DSH preset, Codex user skill, or project skill may each use a different root. Use an observed loader/file path rather than a fixed host-specific fallback.
+4. Run `--help` on the installed script before using unfamiliar flags; tool implementations can differ between deployments. Ask for the location only when it cannot be discovered.
 
-PowerShell helper — run once per session to set `$SkillRoot`, then call tools with absolute paths:
+Use the observed skill root in absolute tool paths. Host-specific installation
+examples belong in the workbench documentation, not the firmware workflow.
 
-```powershell
-$dsh = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE '.dsh' }
-$SkillRoot = Join-Path $dsh '.agent-presets\embedded\skills\arm-cortex-expert'
-if (-not (Test-Path (Join-Path $SkillRoot 'SKILL.md'))) {
-  Write-Warning "Installed skill root not found: $SkillRoot - ask the user for the checkout location."
-}
-# Example calls:
-python (Join-Path $SkillRoot 'tools\map-parser\map-parser.py') info firmware.map
-python (Join-Path $SkillRoot 'tools\stm32cli\stm32cli.py') chip STM32H723ZGTx
-```
 ## Tools
 
 Two companion CLIs ship with this skill (resolve paths via
