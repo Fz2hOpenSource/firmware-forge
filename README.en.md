@@ -1,104 +1,106 @@
-# DSH Embedded Workbench
+# Firmware Forge · Embedded Skills and Workbench
 
-A DSH firmware workbench for **STM32 / Keil MDK**. It helps you review firmware, query chip resources, inspect map-file issues, and run guarded MDK build or flash actions in one agent session.
+[中文](README.md) · [Usage guide (Chinese)](docs/workbench-usage.md) · [Design philosophy](docs/design-philosophy.md) · [Contributing](CONTRIBUTING.md)
 
-It does not replace reference manuals or guess a board configuration. Project source, `.ioc` files, linker scripts, measurements, and vendor documentation always take priority.
+Three independent skills for AI-assisted **STM32 / Cortex-M firmware, FreeRTOS and MCU–FPGA interaction design**, with an optional DSH build/flash workbench.
 
-## When to use it
+Define requirements first, choose the smallest complete interaction, then implement and verify it. Start with simple upload control and add mechanisms only when multichannel acquisition, asynchronous work or recovery requirements need them.
 
-| Your task | What the workbench provides |
-| --- | --- |
-| Review an SPI/ADC/UART + DMA path | Checks DMA-buffer ownership, ISR boundaries, cache coherency, and RTOS priority concerns. |
-| Take over an unfamiliar STM32 | `stm32cli` queries chip, peripheral, DMA, pin, clock, and interrupt data from CubeMX databases. |
-| Diagnose a HardFault or memory issue | `map-parser` uses a Keil `.map` file to locate PCs, symbols, memory regions, and MPU alignment issues. |
-| Add confidence to a measurement chain | Plans host tests, seams, replay regression, tolerances, and HIL coverage. |
-| Design a UART / RS-485 / CAN protocol | Defines frame, state-gating, timeout/retry, and compatibility rules. |
-| Build or flash an MDK project | `/build` provides a single interface for builds and guarded flashing. |
+## Choose a skill
 
-## What it does not do
+| Task | Skill | Main output |
+|---|---|---|
+| Define or evolve device-to-host/FPGA interaction | [embedded-protocol-designer](embedded-protocol-designer/SKILL.md) | Behavior, commands/states, duplicate/failure semantics and compatibility |
+| Implement or debug acquisition, DMA, tasks and transition exits | [arm-cortex-expert](arm-cortex-expert/SKILL.md) | Code, ownership, execution bounds and platform checks |
+| Verify parsers, event sequences, replay and recovery | [embedded-test-engineer](embedded-test-engineer/SKILL.md) | Relevant tests, results and remaining hardware gaps |
 
-- It does not override project source, `.ioc` files, linker scripts, measurements, or vendor documentation; those are stronger evidence.
-- It does not perform PCB, component-selection, electrical, or EMC design.
-- It does not modify HAL, RTOS, or LwIP internals by default; use supported configuration, callbacks, hooks, weak overrides, and project-owned adapters first.
-- It does not guess among multiple projects or images before flashing.
+Load only the skills needed for the task. These are engineering instructions and helper tools, not a runtime protocol stack or a universal state-machine engine.
 
-## Get started in five minutes
+## Design philosophy
 
-### Install
+**Reliability improvements should make failures more controllable without making ordinary development progressively harder.**
 
-Double-click `install.bat`, or run:
+Agree on behavior and acceptance criteria; use the minimum sufficient design; give real state a clear owner and actual waits an endpoint. Extend affected parts as requirements grow. Evaluate maintainability and observable behavior rather than enum count. Separate design, implementation, test and hardware evidence.
+
+See the [design rationale and examples](docs/design-philosophy.md) (Chinese, with an English overview).
+
+## Quick start
+
+```sh
+git clone https://github.com/Fz2hOpenSource/firmware-forge.git
+cd firmware-forge
+```
+
+### Codex
+
+Copy the complete skill directories you need into `~/.agents/skills/` for personal use, or your firmware repository's `.agents/skills/` for project use. Keep `SKILL.md`, references and tools together. Inspect and back up an existing same-name skill before updating it. Local discovery and reload behavior follow the [official skill documentation](https://learn.chatgpt.com/docs/build-skills).
+
+For a first installation on Windows, run this from the cloned repository; it stops before copying if any selected destination already exists:
 
 ```powershell
-git clone <this-repo>
-cd <repo>
-.\install.ps1          # install/update $DSH_HOME\.agent-presets\embedded\
-.\install.ps1 -Symlink # development mode: repository edits take effect immediately
+$skillNames = @('arm-cortex-expert', 'embedded-protocol-designer', 'embedded-test-engineer')
+$skillDestination = Join-Path $env:USERPROFILE '.agents\skills'
+foreach ($name in $skillNames) {
+  if (Test-Path -LiteralPath (Join-Path $skillDestination $name)) {
+    throw "Skill already exists; compare and back up before updating: $name"
+  }
+}
+New-Item -ItemType Directory -Force -Path $skillDestination | Out-Null
+foreach ($name in $skillNames) {
+  Copy-Item -LiteralPath (Join-Path (Get-Location).Path $name) -Destination $skillDestination -Recurse -ErrorAction Stop
+}
 ```
 
-The script discovers `UV4.exe` and searches downward from the session workspace for one `.uvprojx`. When that is not enough, edit `scripts\mdk\mdk.config.ps1`. Multi-project and backend rules are in the [MDK build/flash SOP](docs/mdk-build-flash.md) (Chinese).
-
-### Enable and ask a concrete question
-
-Create a DSH session and select 「嵌入式开发工作台」 (Embedded Workbench). Then describe the engineering task:
-
-- “Review this SPI + DMA receive path for cache coherency.”
-- “Which DMA can SPI1 RX use on STM32H723?”
-- “Locate a HardFault with PC `0x0800b455` from this map file.”
+Select an installed skill or mention it explicitly in your firmware project. If it does not appear, check the directory layout and restart Codex. An existing deployment may use another loader-reported location; avoid installing duplicate copies blindly. DSH and Keil are not required for skill use.
 
 ```text
-/build            # build (incremental by default; pass a project alias for multi-project repos)
-/build -r         # full rebuild
-/build sensor     # build the project aliased as 'sensor'
-/flash            # flash
-/flash main       # flash a specific project
+Use $embedded-protocol-designer.
+The device uses STM32 + FreeRTOS with one controlling host.
+It needs START, STOP and STATUS. STOP ends both acquisition and upload.
+No runtime parameter changes are needed; synchronized channels may be added later.
+Inspect existing project contracts, then propose the minimum behavior table,
+duplicate-command and failure handling. List missing facts and verification needs.
+Design only at this stage; do not prebuild a framework for future requirements.
 ```
 
-## How it stays conservative
+Expect a small requirements/behavior contract and explicit completion/failure semantics. Real asynchronous waits need local phases and deadlines; bounded driver behavior still needs project evidence. After agreeing on the design, request implementation with the firmware skill and relevant verification with the test skill.
 
-The workbench follows a **simplest sufficient design** rule: skip an RTOS when a super-loop is enough, skip DMA when IRQ I/O is enough, and skip rings when one clearly owned buffer is enough. Escalate complexity only for project evidence or an explicit requirement.
+### DSH (optional)
 
-ISR/RTOS priority compliance, DMA ownership, M7/H7 cache coherency and DMA-accessible memory, bounds checks, and observable timeout/overflow/DMA-error paths are not optional simplifications. The complete rule set is in [the common Cortex-M guidance](arm-cortex-expert/references/common.md).
+The [DSH guide](docs/workbench-usage.md#dsh) documents the installer. `./install.ps1` installs the preset under `$DSH_HOME/.agent-presets/embedded` (default `~/.dsh/.agent-presets/embedded`). It replaces managed plugin/script/skill trees and removes skill directories outside its distribution list; back up customizations first. This is not a Codex installer.
 
-Read the [architecture guide](docs/architecture.md) (Chinese) for component integration, boundaries, and extension points.
+On Windows, `install.bat` is a double-click entry to the same installer. Choose the embedded preset in DSH. The current Windows MDK plugin offers `/build`, `/build -r` and `/flash`, with an optional project alias. Build/flash requires UV4, project configuration and the selected programmer; it is not supplied by copying skills. See [MDK usage (Chinese)](docs/mdk-build-flash.md).
 
-## Requirements and support boundary
+### Try a tool without hardware
 
-| Component | Required? | Used for |
-| --- | --- | --- |
-| DSH | yes | preset host |
-| Python 3.8+ | tools only | `stm32cli` and `map-parser` |
-| STM32CubeMX database | `stm32cli` only | pass `--db-path` or `STM32CUBEMX_DB_PATH` |
-| Keil MDK / UV4 | build/flash only | build and flash actions |
-| ST-Link / pyOCD / J-Link | backend-dependent | matching flash backend |
+Use Python 3.10+ from the repository root; no AI host or board is needed:
 
-The current focus is Windows, DSH, Cortex-M / STM32, and Keil MDK. Other IDEs, chip families, and DSH versions are not verified support claims.
-
-## Documentation
-
-| Topic | Read |
-| --- | --- |
-| Presets, adding skills, update, and uninstall | [Daily use guide](docs/workbench-usage.md) (Chinese) |
-| Projects, images, and four flash backends | [MDK build/flash SOP](docs/mdk-build-flash.md) (Chinese) |
-| Layers, boundaries, and extension points | [Architecture guide](docs/architecture.md) (Chinese) |
-| Host/isolate realms and preset maintenance | [DSH integration guide](docs/dsh-integration.md) (Chinese) |
-| Complete contract of a skill | its `SKILL.md` and `references/` |
-| 中文说明 | [README.md](README.md) |
-
-## Repository layout
-
-```text
-firmware-forge/
-├── arm-cortex-expert/            # firmware review skill + stm32cli, map-parser
-├── embedded-test-engineer/       # verification strategy skill
-├── embedded-protocol-designer/   # device protocol design skill
-├── preset/                       # DSH metadata and agent composition
-├── plugins/mdk/                  # /build plugin
-├── scripts/mdk/                  # MDK and flash-backend scripts
-├── docs/                         # user and maintainer documentation
-├── install.bat / install.ps1     # Windows installation entry points
-└── LICENSE                       # MIT
+```sh
+python embedded-test-engineer/scripts/check_state_model.py embedded-test-engineer/assets/reconfigure-model.json --json --strict
+python embedded-test-engineer/scripts/check_state_model.py embedded-test-engineer/assets/stuck-model.json --json --strict
 ```
+
+The first example should emit `gate_status: pass` and exit `0`. The second intentionally contains a timeout recovery cycle: expect `TIMEOUT_CYCLE` and exit `1`. Run it as an expected failure, not a successful step in a fail-fast script.
+
+## Tools and dependencies
+
+| Tool | Requirements and reference |
+|---|---|
+| State-graph linter | Python 3.10+ standard library; [format and limits](embedded-test-engineer/references/state-model-format.md) |
+| CubeMX query CLI | Python and a local CubeMX database; [reference](arm-cortex-expert/references/tools-stm32cli.md) |
+| Keil map parser | Python and an armlink map file; [reference](arm-cortex-expert/references/tools-map-parser.md) |
+| MDK wrapper/plugin | Windows, Keil UV4 and the selected flash backend; [guide](docs/mdk-build-flash.md) |
+
+Python 3.10+ is a common starting point for these tools. The recorded test environment is Python 3.14.2, not a full version/platform certification. Third-party compilers, databases and programmers are separately installed and licensed.
+
+## Contributing and evidence
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for a lightweight workflow and [AGENTS.md](AGENTS.md) for AI collaboration rules. [Behavior scenarios](docs/skill-behavior-cases.md) are evaluation criteria, not evidence of completed device tests. The [audit record](docs/skills-audit-2026-09-08.md) describes checks actually performed.
+
+See also the [architecture](docs/architecture.md), [DSH integration](docs/dsh-integration.md) and [current integration checks](docs/integration-2026-09-10.md) (Chinese).
+
+A graph pass does not prove scheduler, DMA/cache, FPGA CDC or physical safety behavior. Query/map tools also need cross-checking against the actual project and vendor evidence.
 
 ## License
 
-Released under the [MIT License](LICENSE).
+[MIT](LICENSE). Report problems or propose improvements through [GitHub Issues](https://github.com/Fz2hOpenSource/firmware-forge/issues).

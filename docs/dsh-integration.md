@@ -27,14 +27,14 @@ DSH 的注册表、sandbox、审批栈、模型路由和跨 session provider 属
 
 ## Persona 契约
 
-persona 只规定工作方式：何时加载哪个技能、证据优先级、烧录前确认目标，以及长编译应后台执行。工具参数、格式细节和安全检查应由各自的 `SKILL.md`、插件或脚本承担，避免 persona 变成第二份不一致的操作手册。
+persona 只规定工作方式：需求先行、最小足够实现、局部扩展、何时加载哪个技能、证据优先级、烧录前确认目标，以及长编译应后台执行。工具参数、格式细节和安全检查应由各自的 `SKILL.md`、插件或脚本承担，避免 persona 变成第二份不一致的操作手册。
 
 ## 更新与兼容性
 
 修改 DSH 组合后，在发布前完成以下检查：
 
 1. 用目标 DSH 版本启动 preset，确认没有 service registration / realm 冲突。
-2. 确认三个技能可见，`/build` 已注册，Windows 与非 Windows 的 shell 开关符合预期。
+2. 确认三个技能可见，`/build` 与 `/flash` 已注册，Windows 与非 Windows 的 shell 开关符合预期。
 3. 记录测试过的 DSH 版本与已知限制；`@deepseek-ai/dsh-*` 服务名或生命周期语义变化时，优先更新此文档和 smoke test。
 
 本仓库目前不宣称跨 DSH 版本的永久兼容性。升级 DSH 后，应先进行一次最小 smoke test，再向使用者推荐更新。

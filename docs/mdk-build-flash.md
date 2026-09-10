@@ -8,7 +8,7 @@
 
 `mdk.ps1` 会**自动探测**，优先级如下：
 
-1. **UV4.exe**：注册表（`HKLM\SOFTWARE\WOW6432Node\Keil\Products\MDK` 的 `Path`）→ 常见路径 `C:\Keil_v5\UV4\UV4.exe` → 都找不到才报错。
+1. **UV4.exe**：`MDK_UV4` 环境变量 → `mdk.config.ps1` 中的 `$Uv4Path` → 注册表（`HKLM\SOFTWARE\WOW6432Node\Keil\Products\MDK` 的 `Path`）→ 常见路径 `C:\Keil_v5\UV4\UV4.exe` → 都找不到才报错。
 2. **工程 .uvprojx**：从当前目录（slash 命令会传入会话工作区）**只向下递归搜索** `*.uvprojx`（默认 6 层深，`-SearchDepth` 可调；不向上爬父目录，避免误抓工作区之外的工程）；唯一命中就用它，多个则报错让你用 `-Project` 指定。
 
 只有自动探测失败（非标准安装路径、工程不在工作区）时，才需要编辑 `$DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.config.ps1`：
@@ -58,13 +58,16 @@ $FlashBackend = 'keil'   # keil | stlink | dap | jlink
 AI 通过 PowerShell 工具调用同一个脚本（长编译放后台）：
 
 ```powershell
-pwsh -File "$env:DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.ps1" build
-pwsh -File "$env:DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.ps1" flash
+$workbenchHome = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE ".dsh" }
+$mdkScript = Join-Path $workbenchHome ".agent-presets\embedded\scripts\mdk\mdk.ps1"
+& $mdkScript build
+# 确认构建成功及烧录目标后，单独执行：
+& $mdkScript flash
 ```
 
 ## 原理与命令映射
 
-日志分两段：UV4 的 `-o` 只接受**相对工程目录的文件名**（传绝对路径时目录部分被丢弃，见已知坑 4），所以脚本让 UV4 把日志直接写进**工程目录**，解析完再归档一份到安装根的 `logs\` 目录（`$DSH_HOME\.agent-presets\embedded\logs\`）——**重装/更新不会丢失故障现场**；归档目录每次启动自动清理 30 天前的旧文件，单文件按动作覆盖写，不会无限堆积。
+日志分两段：UV4 的 `-o` 只接受**相对工程目录的文件名**（传绝对路径时目录部分被丢弃，见已知坑 4），所以脚本让 UV4 把日志直接写进**工程目录**，解析完再归档一份到安装根的 `logs\` 目录（`$DSH_HOME\.agent-presets\embedded\logs\`）——安装器保留该日志目录，但日志不构成永久历史归档；归档目录每次启动自动清理 30 天前的旧文件，单文件按动作覆盖写，不会无限堆积。
 
 | 动作 | UV4 命令 | 说明 |
 |---|---|---|
@@ -78,7 +81,7 @@ pwsh -File "$env:DSH_HOME\.agent-presets\embedded\scripts\mdk\mdk.ps1" flash
 2. **编译慢**：几十秒到几分钟。slash 命令会同步等待；AI 侧应把 build 放后台任务跑，避免阻塞。
 3. **Keil 烧录默认完全静默**：`-j0` 隐藏窗口且不回传结果。现在 flash 同样写日志 `uv4-flash.log`，成功判据为 `Verify OK / Programming Done / Load finished / Application running` 且无失败关键字；出现 `Error / failed / cannot / No Algorithm / Verify failed` 即失败并列出相关行，非零退出。
 4. **UV4 的 `-o` 忽略绝对路径中的目录部分**：`-o C:\...\logs\uv4-build.log` 实际会把日志写到 `<工程目录>\uv4-build.log`。症状是编译本身每次都正常执行，但包装脚本在集中日志目录永远等不到文件，误报"结果不确定"。修法即上文的两段式：只向 `-o` 传裸文件名、从工程目录读取、解析后归档。
-5. **UV4.exe 是 GUI 子系统进程，shell 的 `&` 不会等它结束**：脚本启动 UV4 后会立即继续往下跑——此刻 `$LASTEXITCODE` 是空的、日志也还没生成，必然误报"结果不确定"。这正是 Keil 文档要求用 `START /WAIT` 的原因。包装脚本现改用 `Start-Process -Wait` 真正等待结束（`-WaitTimeoutSec` 可调，默认 900 秒；超时杀进程并按"结果不确定"退出，防许可证弹窗挂死会话）。
+5. **UV4.exe 是 GUI 子系统进程，shell 的 `&` 不会等它结束**：脚本启动 UV4 后会立即继续往下跑——此刻 `$LASTEXITCODE` 是空的、日志也还没生成，必然误报"结果不确定"。这正是 Keil 文档要求用 `START /WAIT` 的原因。包装脚本现改用 `Start-Process -PassThru` 获取进程，再用 `WaitForExit` 有限等待（`-WaitTimeoutSec` 可调，默认 900 秒；超时杀进程并按"结果不确定"退出，防许可证弹窗挂死会话）。
 
 ## 烧录后端（keil / stlink / dap / jlink）
 

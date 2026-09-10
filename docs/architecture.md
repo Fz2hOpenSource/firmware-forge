@@ -1,6 +1,6 @@
-# DSH 嵌入式开发工作台：架构说明
+# Firmware Forge：架构说明
 
-本文件说明工作台如何把设计规则、工程证据与执行动作放在同一条可追溯的流程中。
+三个技能可独立安装到 AI 宿主，DSH 工作台提供可选的构建与烧录集成。项目按需求、设计、实现和验证组织工作，设计取舍见 [设计理念](design-philosophy.md)。
 
 ## 分层
 
@@ -9,21 +9,21 @@
 | 装配层 | `preset/`、`install.ps1` | 向 DSH 注册 preset，并把技能、插件和脚本部署到本机。 |
 | 规则层 | 三个 `SKILL.md` | 约束固件设计评审、验证策略与协议演进应如何决策。 |
 | 证据层 | `stm32cli`、`map-parser` | 查询 CubeMX 数据库或已生成的 Keil map，给出可核验的工程事实。 |
-| 执行层 | `/build`、`mdk.ps1`、烧录后端 | 在明确工程、Target、MCU 和后端后构建或烧录。 |
+| 执行层 | `/build`、`/flash`、`mdk.ps1`、烧录后端 | 在明确工程、Target、MCU 和后端后构建或烧录。 |
 
 ## 一次典型工作流
 
-1. 从项目代码、`.ioc`、链接脚本、日志和厂商资料取得事实；它们永远优先于本工作台的规则或工具输出。
-2. 用 `stm32cli` 补全芯片、DMA、引脚、时钟或中断信息；用 `map-parser` 分析已有产物。
-3. 由技能选择最简单、仍能满足项目证据的架构，并保留 DMA、ISR、Cache、RTOS 等硬安全边界。
-4. 需要时由验证或协议技能补齐测试策略、数据回放、通信契约与版本治理。
-5. 最后才运行 `/build` 或 `flash`；烧录链路拒绝猜测多个工程或模糊的镜像目标。
+1. 明确当前需求、失败行为和验收条件；扩展时检查变化及依赖。
+2. 检查项目契约、代码、`.ioc`、链接脚本、日志和厂商资料。冲突需明确，不能用通用技能规则覆盖产品要求或硬件限制。
+3. 按任务选择协议、固件或测试技能；真实等待才增加局部阶段和退出期限。
+4. 需要芯片数据或已有产物证据时，使用 `stm32cli` / `map-parser` 并核对实际配置；纯协议讨论不要求这些工具。
+5. 执行相关验证，需要构建或烧录时使用 `/build`、`/flash`。烧录前明确工程、Target、MCU 和后端，记录未验证部分。
 
-这不是自动替代参考手册的流程。工具输出是缩小排查范围的线索；与项目或厂商资料冲突时，以后者为准。
+工具输出是核验线索，不能独立证明运行时正确性。需求、实际行为和厂商限制冲突时，保留证据并说明需要解决的差异。
 
 ## 边界
 
-- 当前重点支持 Cortex-M / STM32、Windows、DSH 和 Keil MDK。
+- 技能重点支持 Cortex-M / STM32、FreeRTOS 与设备交互；MDK 命令集成面向 Windows、DSH 和 Keil MDK。
 - 不进行 PCB、器件选型、电气参数或 EMC 设计。
 - 不默认修改 HAL、RTOS、LwIP 等中间件内部；优先配置、回调、hook 和项目自有适配层。
 - 构建和烧录是有副作用的动作，必须先确认目标；诊断、查询与评审应先使用只读路径。
@@ -44,12 +44,13 @@
 
 ## 维护检查
 
-发布前至少运行：
+技能整合及相关工具发布可运行以下检查；日常修改按 [贡献指南](../CONTRIBUTING.md) 选择与风险相称的范围：
 
 ```powershell
 python -X utf8 scripts/validate_skills.py
 python -X utf8 -m unittest discover -s arm-cortex-expert/tools/stm32cli/tests -v
+python -m unittest discover -s embedded-test-engineer/tests -v
 node --check plugins/mdk/mdk-commands.mjs
 ```
 
-还应在真实 DSH、CubeMX 数据库、Keil MDK 和烧录器环境中完成一条最小的查询、构建和烧录 smoke test。
+修改对应集成行为或宣称支持新的环境时，还应在真实 DSH、CubeMX 数据库、Keil MDK 或烧录器上完成相关 smoke test，记录版本和结果。文档修改不要求安装或烧录设备，离线检查不能替代实机结论。
