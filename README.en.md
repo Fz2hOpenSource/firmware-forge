@@ -1,6 +1,6 @@
 # Firmware Forge · Embedded Skills, Commands and Tools
 
-[中文](README.md) · [Usage guide (Chinese)](docs/workbench-usage.md) · [Design philosophy](docs/design-philosophy.md) · [Contributing](CONTRIBUTING.md)
+[中文](README.md) · [Usage guide (Chinese)](docs/workbench-usage.md) · [Design philosophy](docs/design-philosophy.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
 AI is often good at writing firmware code, yet less sure which manual to trust, which boundaries to keep, or when to stop adding machinery. Firmware Forge fills that gap: a set of AI skills for STM32 / Cortex-M and FreeRTOS work, together with chip queries, map analysis, and Keil MDK build/flash commands.
 
@@ -10,7 +10,7 @@ The currently supported hosts are **Codex** and **DSH**. Other hosts are deferre
 
 ## Capability map
 
-After installation, describe the task. The AI loads the matching skill, command, or tool from the request. You can also prefix a message with `$skill-name` to name an entry explicitly.
+After installation, describe the task. The AI can select installed skills, commands, or tools based on the task; check the actual loading records and output. You can also prefix a message with `$skill-name` to name an entry explicitly.
 
 | Your task | Entry | Main output |
 |---|---|---|

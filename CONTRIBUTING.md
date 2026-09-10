@@ -23,6 +23,16 @@
 
 不要求复杂分支命名或固定长模板。外部贡献者可通过自己的 fork 发起 PR；本地提交与远端推送分别处理。不要混入个人工具配置、密钥、会话记录或无法公开的产品数据。
 
+## 版本与发布记录
+
+当前处于早期演进阶段，采用阶段性版本编号，暂不承诺严格遵循语义化版本的兼容性规则：修订号用于小修复和文档修订，次版本号用于新增能力或阶段改进，主版本号用于重要接口迁移或架构换代。
+
+每次发布在 [CHANGELOG.md](CHANGELOG.md) 记录自上一个发布 tag 以来的用户可见变化；不兼容变更无论采用哪个版本号，都单列影响和迁移方法。沿用 `V1.1.0` 这样的 tag 命名。已发布 tag 不移动，后续改动使用新版本。
+
+发布前核对最终提交及相关验证，tag 指向包含更新日志的提交。GitHub Release 正文可使用对应版本的更新日志；版本号不代表已完成实机或所有宿主版本验证。
+
+Early releases use milestone-based versioning rather than strict SemVer guarantees. Document every breaking change and migration in the changelog, regardless of the version number. Published tags remain immutable.
+
 ## 验证
 
 在源码根目录运行共用检查：

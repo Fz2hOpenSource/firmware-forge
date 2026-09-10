@@ -1,6 +1,6 @@
 # Firmware Forge · 嵌入式开发技能、命令与工具
 
-[English](README.en.md) · [安装与使用](docs/workbench-usage.md) · [设计理念](docs/design-philosophy.md) · [参与贡献](CONTRIBUTING.md)
+[English](README.en.md) · [安装与使用](docs/workbench-usage.md) · [设计理念](docs/design-philosophy.md) · [参与贡献](CONTRIBUTING.md) · [更新日志](CHANGELOG.md)
 
 嵌入式开发里，AI 往往卡在同一件事上：它擅长写代码，却未必知道该查哪本手册、该守哪些边界、该在何处停手。Firmware Forge 要补的正是这一段——一组面向 STM32 / Cortex-M 与 FreeRTOS 的 AI 技能，配上芯片查询、map 分析，以及 Keil MDK 的编译与烧录命令。
 
@@ -10,7 +10,7 @@
 
 ## 能力地图
 
-安装完成后，直接描述任务即可。AI 会按请求内容加载对应技能，或调用配套命令与工具。也可以在句首用 `$技能名` 指定入口。
+安装完成后，直接描述任务即可。AI 可根据任务自动选择已安装的技能，或调用配套命令与工具；实际选择以加载记录和输出为准。也可以在句首用 `$技能名` 指定入口。
 
 | 你的任务 | 入口 | 主要交付 |
 |---|---|---|
