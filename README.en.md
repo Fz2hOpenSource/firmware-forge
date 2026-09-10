@@ -6,7 +6,11 @@ Firmware Forge is a collection of **AI skills, commands and tools for embedded d
 
 Current host integrations are **Codex skills** and the **DSH workbench**. Other hosts are deferred until needed. The current scope is firmware software engineering; it does not imply coverage of every MCU, embedded Linux or board-level hardware design.
 
-## Choose an entry
+## Capability map (the AI selects the entry)
+
+**You do not need to pick a skill first.** After installation, describe the task in your firmware project; the AI loads the matching skill, command, or tool from the request. Naming a skill with `$skill-name` is optional — useful to confirm routing or force one entry, not a usage prerequisite.
+
+The table shows what the AI may use and what each entry delivers. **It is not a manual selection checklist:**
 
 | Task | Entry | Main output |
 |---|---|---|
@@ -16,7 +20,7 @@ Current host integrations are **Codex skills** and the **DSH workbench**. Other 
 | Build, rebuild or flash an existing project | DSH `/build`, `/build -r`, `/flash` | Selected-project results and logs; [MDK guide](docs/mdk-build-flash.md) |
 | Query chip resources, analyze map files or lint explicit state graphs | Python helper tools | Scoped query and analysis results |
 
-Skills guide engineering decisions, commands provide execution entry points, and tools process specific inputs. Use them independently or together as needed. Protocol design is not a prerequisite for firmware implementation, testing or builds.
+Skills guide engineering decisions, commands provide execution entry points, and tools process specific inputs. Use them independently or together as needed. Protocol design is not a prerequisite for firmware implementation, testing or builds. If the AI picks the wrong entry, restate the task or name the intended skill.
 
 ## Design philosophy
 
@@ -53,7 +57,7 @@ foreach ($name in $skillNames) {
 }
 ```
 
-Select an installed skill or mention it explicitly in your firmware project. If it does not appear, check the directory layout and restart Codex. An existing deployment may use another loader-reported location; avoid installing duplicate copies blindly. DSH and Keil are not required for skill use.
+After installation, describe the task in natural language; the AI selects an installed skill automatically when possible. You can still force one with `$skill-name`. If it does not appear, check the directory layout and restart Codex. An existing deployment may use another loader-reported location; avoid installing duplicate copies blindly. DSH and Keil are not required for skill use.
 
 For example, request firmware diagnosis directly:
 

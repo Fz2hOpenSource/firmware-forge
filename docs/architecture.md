@@ -33,7 +33,7 @@
 
 ### 新增技能
 
-在仓库顶层创建技能目录及 `SKILL.md`，把名称加入 `install.ps1` 的 `$skillList`，再补齐对应 references 与结构校验。仅创建目录不会使技能随 preset 分发。
+在仓库顶层创建技能目录及 `SKILL.md`，补齐 references 与结构校验。DSH 分发需把名称加入 `install.ps1` 的 `$skillList`；Codex 使用时按 [安装指南](workbench-usage.md#codex) 手动复制完整技能目录。仅创建仓库目录不会使技能出现在任一宿主中。
 
 ### 新增烧录后端
 
