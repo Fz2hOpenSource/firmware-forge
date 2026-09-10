@@ -48,9 +48,14 @@ For an existing project, keep working infrastructure unless changing it solves t
 
 ## Shared Workflow
 
-Establish current requirements before selecting mechanisms. For an extension, inspect
-only changed behavior and its dependencies first; do not reopen the whole design.
-For protocol-driven start/stop or transition failures, read `state-and-interaction.md`.
+Establish the current task and acceptance criteria from the request and existing
+project before selecting mechanisms. A local fix, review or optimization does not
+require a new product specification. Inspect affected behavior and dependencies;
+use the relevant sections below. For protocol-driven start/stop or transition
+failures, read `state-and-interaction.md`.
+
+For peripheral and data-path tasks, apply the relevant checks from this list;
+unrelated tasks do not need a sampling/upload pipeline or new diagnostics:
 
 1. Identify the peripheral path: source, trigger, bus, I/O mode, buffer, processing, and consumer.
 2. Identify rates separately: raw/input sample rate, processed output rate, upload rate, and publication divider.

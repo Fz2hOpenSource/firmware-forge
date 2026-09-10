@@ -1,7 +1,7 @@
 ---
 name: embedded-protocol-designer
 description: >
-  Define requirements, design and evolve embedded device-to-host or MCU-to-FPGA
+  Define interaction requirements, design and evolve embedded device-to-host or MCU-to-FPGA
   interaction contracts, from simple start/stop upload to multichannel acquisition.
   Covers UART/RS-485/CAN/USB framing, command semantics, minimum state models,
   duplicate requests, bounded waits, reconnect outcomes, and version compatibility.
@@ -15,6 +15,11 @@ description: >
 Start from agreed requirements and implement the smallest complete interaction.
 Support later changes through explicit responsibilities and compatible interfaces,
 not by prebuilding every possible state or feature. Use the user's language.
+
+Use this skill for interaction contracts. Ordinary driver implementation, numeric
+optimization, build commands or replay tests under unchanged interfaces do not
+need a protocol-design pass. A hardware interface alone is not a reason to redesign
+its externally observable behavior.
 
 ## Working Mode
 

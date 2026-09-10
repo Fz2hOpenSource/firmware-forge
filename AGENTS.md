@@ -1,13 +1,13 @@
 # 项目协作约定
 
-本仓库维护三个嵌入式技能及配套工具。需求先行，采用当前最小足够方案，后续局部扩展。
+本仓库维护面向嵌入式开发的技能、命令与工具，当前重点为 STM32 / Cortex-M 固件工程。先明确本次任务与验收条件，选择最小足够方案；协议设计是其中一个专项。
 
 设计取舍见 [设计理念](docs/design-philosophy.md)，面向贡献者的步骤见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 使用技能
 
 当前提供 Codex 与 DSH 两种使用入口。三个技能位于仓库顶层：`embedded-protocol-designer/`、`arm-cortex-expert/`、`embedded-test-engineer/`。
-按任务读取对应 `SKILL.md`，无需每次加载全部技能。安装与更新见 [使用指南](docs/workbench-usage.md)，采用实际 loader 报告的路径。
+按任务读取对应 `SKILL.md`：固件实现/排障用 arm-cortex-expert，测试/回放用 embedded-test-engineer，交互契约设计/演进用 embedded-protocol-designer。单独构建或查询可直接使用相关命令/工具。安装与更新见 [使用指南](docs/workbench-usage.md)，采用实际 loader 报告的路径。
 `install.ps1` / `install.bat` 仅用于 DSH 工作台；在 Codex 使用技能按指南复制完整技能目录。
 
 ## 修改

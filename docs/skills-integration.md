@@ -2,19 +2,27 @@
 
 [设计理念](design-philosophy.md) · [安装与使用](workbench-usage.md) · [贡献指南](../CONTRIBUTING.md)
 
-先确定当前需求，再设计最小交互与状态，实施并验证；需求变化时分析受影响行为并局部扩展。
+本项目提供嵌入式开发的技能、命令和工具。先辨识当前任务，再选择合适入口；固件开发、协议设计与测试验证没有固定的先后依赖。
 
 ## 三个技能的责任
 
-| 技能 | 决策责任 | 主要参考 |
+| 技能 | 决策责任 | 按需参考 |
 |---|---|---|
-| [embedded-protocol-designer](../embedded-protocol-designer/SKILL.md) | 对外行为、命令/状态约定、重复与失败语义、兼容性 | requirements-and-growth、state-and-timing、operation-lifecycle |
-| [arm-cortex-expert](../arm-cortex-expert/SKILL.md) | 状态写者、实际等待与调度、资源交还、硬件观测 | state-and-interaction、common、measurement-streaming |
-| [embedded-test-engineer](../embedded-test-engineer/SKILL.md) | 故障事件序列、资源/时间验证、验证层级与限制 | protocol-state-testing、state-model-format |
+| [arm-cortex-expert](../arm-cortex-expert/SKILL.md) | 驱动、DMA/RTOS/cache、采集/DSP、存储、网络和性能排障 | common、core/family、measurement-dsp、persistent-storage、lwip-ethernet；真实等待涉及 state-and-interaction |
+| [embedded-test-engineer](../embedded-test-engineer/SKILL.md) | 单元/驱动测试、测试接缝、回放、容差、时序与 HIL | test-strategy、test-doubles、data-replay、timing-and-hil；交互验证涉及 protocol-state-testing |
+| [embedded-protocol-designer](../embedded-protocol-designer/SKILL.md) | 公开交互契约、帧与命令、重复/失败语义及兼容演进 | requirements-and-growth、frame-and-fields、command-space、operation-lifecycle |
 
-简单同步启停可以只用短表和一个 owner；真实异步等待才有局部阶段。同步多通道可共用采集状态机，独立通道按需实例化，共享时钟等由资源 owner 协调。技能例子不是固定产品需求。
+## 如何组合
 
-按当前任务加载需要的技能，不要求每次全部加载。协议、固件、测试的约定冲突时，保留证据并根据产品需求和实际硬件限制解决，不能让某个技能文字静默覆盖它们。
+- 固件修复或优化从实际驱动和数据路径开始。接口语义未变时，不先重做协议设计。
+- 回放与测试接缝可以直接从测试技能开始。算法误差和参考数据不足时，先解决验证依据，而不是生成无关状态模型。
+- 协议设计只处理交互契约；需要实现或验证时再协作。协议需求不会自动扩大到所有产品需求。
+- 单独查询芯片、分析 map、构建或烧录可直接使用相关工具/命令，核对输入和目标；工具结果不清楚或需要工程判断时再加载相关技能。
+- 新功能或跨模块问题按需要组合技能，沿用已有约定。冲突时保留证据，按产品需求和实际硬件限制解决。
+
+## 命令与工具
+
+DSH 的 `/build`、`/build -r` 与 `/flash` 封装已有工程的执行；Python 工具分别提供 CubeMX 查询、map 分析和可选状态图检查。命令不负责替用户决定设计，检查器不承担固件运行时控制。入口及依赖见 [使用指南](workbench-usage.md)。
 
 ## 源码与宿主适配
 
@@ -34,7 +42,7 @@ DSH 的 `preset/`、MDK 插件和 PowerShell 脚本是宿主适配；复制技�
 
 ## 验证与演进
 
-[行为验收场景](skill-behavior-cases.md) 用于评价 AI 是否保持简单、正确处理多通道扩展、未知结果和有界恢复。它们是判据，不是已经执行过的设备测试。
+[行为验收场景](skill-behavior-cases.md) 覆盖驱动排障、DSP/存储、数值回放、工具调用与协议交互，评价 AI 是否选择了相关入口和适当工作量。它们是判据，不是已经执行过的设备测试。
 
 共用检查及相关工具测试见 [贡献指南](../CONTRIBUTING.md)。研究中的退出检查已作为测试技能的可选工具；当前没有提供通用固件状态机引擎。公共代码应来自真实项目的稳定需求与复用价值。
 

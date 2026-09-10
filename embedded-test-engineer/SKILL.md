@@ -61,7 +61,7 @@ are out of scope.
 Prefer evidence in this order:
 
 1. Current user requirements and applicable project instructions.
-2. Product/protocol acceptance criteria and applicable hardware specifications.
+2. Product, algorithm, driver or protocol acceptance criteria relevant to the task, and applicable hardware specifications.
 3. Implementation evidence: sources, build/link options, measurements and existing tests.
 4. Skill references and general testing practice.
 
@@ -88,11 +88,13 @@ trigger:
 
 ## Coverage Philosophy
 
-For new work, confirm expected normal, repeated-input and failure behavior first.
-For local changes, test affected behavior and dependencies rather than every
-mechanism mentioned in a reference. Simple synchronous start/stop does not require
-an asynchronous request ledger; channels sharing a lifecycle need not each have a
-separate state machine. Add test machinery only when it protects a concrete risk.
+Confirm the test objective from the request, existing requirements and observed
+regression. A test or replay task does not require restarting product or protocol
+design. For local changes, test affected behavior and dependencies: numeric
+accuracy and alignment for algorithms, error paths and resource handling for
+drivers, or event sequences for asynchronous operations. Use protocol references
+and graph tooling only for relevant interaction/state risks. Add test machinery
+only when it protects a concrete risk.
 
 Prioritize failure-risk coverage over code-coverage percentage:
 

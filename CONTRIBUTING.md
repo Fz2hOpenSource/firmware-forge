@@ -6,9 +6,9 @@
 
 | 内容 | 维护位置 |
 |---|---|
+| 驱动、DMA/RTOS、DSP、存储、网络和性能排障 | `arm-cortex-expert/` |
+| 单元/驱动测试、回放、容差、时序与状态图检查 | `embedded-test-engineer/` |
 | 协议需求、命令、重复/失败与兼容性 | `embedded-protocol-designer/` |
-| 固件执行、DMA、任务、资源与硬件约束 | `arm-cortex-expert/` |
-| 测试方法、回放与状态图检查器 | `embedded-test-engineer/` |
 | 项目理念与人类使用说明 | README 与 `docs/` |
 | DSH / Keil 适配 | `preset/`、`plugins/mdk/`、`scripts/mdk/`、`install.ps1`、`install.bat` |
 

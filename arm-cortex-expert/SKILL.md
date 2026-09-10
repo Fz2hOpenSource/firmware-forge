@@ -9,8 +9,8 @@ description: >
   bare-metal projects.
 
   Use for acquisition, high-rate peripherals, DMA buffers, ISR/task handoff,
-  cache-safe data paths, driver architecture, CubeMX RTOS integration, and
-  STM32 ETH/LwIP paths.
+  cache-safe data paths, driver architecture, measurement DSP, persistent storage,
+  performance diagnosis, CubeMX RTOS integration, and STM32 ETH/LwIP paths.
 
   Do not use for board-level hardware design, pin wiring, PCB layout,
   component selection, voltage/current calculations, or MCU-independent C/C++.
@@ -84,21 +84,23 @@ State when a conclusion is an inference rather than proven by project artifacts.
 
 Use `references/common.md` as the authoritative source for operating modes, the complexity ladder, and non-negotiable firmware boundaries. In ordinary work, read it first, stop at the simplest sufficient tier, and add complexity only when the project evidence or stated requirements justify it.
 
-## Requirements and Companion Skills
+## Task Scope and Companion Skills
 
-Confirm the current behavior before adding architecture. A bounded start/stop function
-and one state owner may suffice; add local asynchronous phases only for real waits.
-Synchronous channels can share a state machine and channel configuration; independent
-channels need local instances plus explicit shared-resource constraints. Do not
-mandate HSM, a manager task, queues, four configuration views or a transaction engine
-because future expansion is possible.
+Start from the requested firmware change, diagnosis or review and its acceptance
+criteria. Existing requirements and interfaces are inputs; a local fix need not
+produce a new requirements document. Choose the relevant driver, DMA/RTOS, DSP,
+storage, networking or performance references and prioritize working project code.
 
-The protocol skill defines public command/response and compatibility contracts; this
-skill implements them without blocking required progress or falsifying hardware
-state. The test skill checks logic, resources and timing at appropriate layers.
-Load a companion only when its part of the work is needed; do not require all three
-for a small patch. If companions are unavailable, state their relevant contracts
-and verification gaps locally.
+Use `embedded-test-engineer` when test design, host isolation, replay or timing
+evidence needs focused work. Use `embedded-protocol-designer` when the task defines,
+changes or reviews an externally observable interaction contract. A DMA/cache bug,
+filter optimization or flash driver fix under an unchanged interface does not
+automatically require protocol design or a state graph.
+
+For actual asynchronous transitions, use `references/state-and-interaction.md` to
+preserve bounded progress, resource ownership and honest hardware outcomes. Do not
+force this workflow onto unrelated tasks. If a companion is unavailable, handle
+the needed boundary from project evidence and state remaining gaps.
 
 ## Output Contract
 
