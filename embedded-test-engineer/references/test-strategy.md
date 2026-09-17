@@ -34,6 +34,37 @@ Answer "what verification does this change need?" before writing any test.
   `regression probability × blast radius × detection difficulty` and cover
   the top first.
 
+## Check That a Regression Test Can Discriminate
+
+For a critical regression, establish the state in which the promised behavior is
+observable before triggering the change. For example, "reapplying unchanged
+configuration preserves filter output" needs a warmed, valid output first; two
+successful apply calls immediately after initialization do not test continuity.
+Assert the visible validity, continuity or value contract, not just a success code.
+
+Confirm fault injection reaches the intended path and that the observation window
+includes its consequence. When feasible, make one targeted countercheck in an
+isolated test copy: restore the old defect (such as an unnecessary reset) and verify
+that this test fails for the intended reason. Initialization failure, an unrelated
+crash or a build failure is not that evidence. Record the gap when this check cannot
+be run; full mutation testing is not required for every small patch.
+
+## Changes With Multiple Consumers
+
+For public availability or validity changes, select affected status, one-shot read,
+single/mixed stream and recovery paths, including different value kinds. Test each
+against its contract: raw input may be allowed while engineering values are not.
+Include binding/configuration changes that leave numeric parameters unchanged,
+stale cached results and current-request error reasons where those paths exist.
+
+For partial updates, select absent, valid, empty/null, wrong-type, out-of-range and
+nested-partial inputs supported by the protocol. Assert response, changed-field
+readback, untouched-field preservation and revision behavior across relevant update
+entry points. Use the project's declared merge/replacement rules, not a universal
+retain-on-omission assumption. Where persistence and live application differ,
+exercise save success/apply failure and apply success/no fresh result yet; do not
+let one successful stage stand for all three.
+
 ## Keep Verification Proportional
 
 Skip dedicated tests for reversible low-impact edits with no meaningful regression

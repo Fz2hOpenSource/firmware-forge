@@ -39,4 +39,124 @@
 | 队列容量 100、占用 80、突发 10、后续速率 1 项/ms | 无服务余量仅 10 ms，另留裕量并验证调度 | 用空队列的 100 ms 填满时间通过检查 |
 | 图有 BUSY 自循环但 timeout 能到终态 | 默认警告仍待解释；严格门禁退出 1 | 忽略 warning 或删真实边以获得 pass |
 
-实际使用记录应包含输入代码或规范版本、AI 输出、最小修复、实际验证及残余假设。缺少这些记录时，只报告技能结构校验和工具测试结果。
+## 定向盲测输入
+
+以下为可单独投递的最小输入；代码为伪代码，不是可直接编译的固件。评估时只给被评代理所选输入和实际待测技能，不提供上表或后面的评审判据，也不预告缺陷位置。允许代理指出缺少的工程证据，不要求编造完整实现。
+
+### A：参数更新
+
+用户请求：“这次改动希望更新增益时不重启采集，评审是否可以合入；有问题请给最小修正思路。”
+
+```text
+约定：采集任务持续调用 Step；StopAndJoin 返回后不再有 Step 在途。
+无其它锁或单写者消息机制。Reset 会清空 Step 使用的累积器。
+旧 Apply(g): StopAndJoin(); ctx.gain = g; Reset(ctx); Start();
+新 Apply(g): ctx.gain = g; Reset(ctx);
+采集任务: while running: output = Step(ctx, next_sample());
+另一控制入口 Clear(): Reset(ctx);
+```
+
+### B：重复应用测试
+
+用户请求：“需求是重复应用相同配置不中断有效输出，这个回归测试够了吗？”
+
+```text
+滤波器初始 valid=false；连续输入 16 个样本后 valid=true。
+Reset 会清空历史并把 valid 置为 false。
+Apply(cfg) 对合法配置总是返回 OK。
+现有测试:
+  Init();
+  assert Apply(cfg) == OK;
+  assert Apply(cfg) == OK;
+```
+
+### C：读值与上传
+
+用户请求：“删除传感器后状态查询已经返回不可测，请评审读值和上传入口是否符合约定。”
+
+```text
+约定：无绑定时仍允许 RAW；ENGINEERING 必须属于当前绑定且已生效的配置。
+混合流要求所有所选值均可用，否则整组拒绝。
+初态：绑定 A，gain=2，缓存 ENGINEERING=10，来源 A；连接正常。
+删除绑定: ctx.ready=false; binding=none;  // 缓存不变
+Status(): return ctx.ready;
+Read(kind): return kind == RAW ? raw : cached_engineering;
+Start(kind): return connected ? OK : OFFLINE;
+StartMixed(kinds): return connected ? OK : OFFLINE;
+Bind(B): if B.gain == gain: return OK; else Apply(B);
+```
+
+### D：保存配置
+
+用户请求：“请给两个保存入口设计定向验收，并指出还需明确的响应语义。”
+
+```text
+既有契约：省略保留；points=[] 清空；null/类型或范围非法则整单拒绝；
+嵌套对象按成员合并；真正变更才递增 stored_revision。
+gain 为 1..8 的整数；points 为整数数组；limits 满足 low <= high。
+初始：gain=2, points=[1,2], limits={low:0,high:10}, stored_revision=4。
+SaveA(req): next = merge(existing, req); validate(next); persist(next);
+SaveB(req): next = merge(defaults, req); validate(next); persist(next);
+默认：gain=1, points=[], limits={low:0,high:100}。
+两个入口在 persist 成功后均回复 OK，再尝试 ApplyFPGA(next)。
+一次记录：stored_revision=5；ApplyFPGA 失败；runtime_revision=4；
+旧缓存由 revision 4 产生，但读值响应附上 stored_revision。
+```
+
+### E：现场验收记录
+
+用户请求：“请评审这份频率模式断线恢复验收结论，说明能证明什么、还缺什么。”
+
+```text
+要求：频率模式，断开输入能被检测，接回后 2 秒内恢复有效输出。
+UI 选择 frequency；MCU context=phase；FPGA mode echo=phase。
+脚本取得唯一控制连接并自动启流；未记录绑定、固件版本或预热状态。
+每秒轮询一次，请求耗时 80~250 ms；t=10.0 正常，11.0 无信号；
+接回时刻未记录；13.0 无信号，14.0 有效。
+脚本把任意一次无信号计为失败，但总结写“恢复耗时精确 2.000 秒”。
+finally 发 STOP 超时；总结写“已恢复原状”。
+附件：旧 MCU/新 FPGA 的 core 仿真日志；无 top SPI 或实机版本矩阵。
+```
+
+### F：停流后的更新
+
+用户请求：“下面的配置更新需要增加并发保护吗？请按已有实现评审。”
+
+```text
+StopUploadAndJoin 成功时：禁止生产者继续提交，停止相关 DMA/中断源，
+等待相关 ISR、回调与处理任务的在途访问全部结束；失败时返回错误。
+控制操作由同一 owner 串行执行，没有其它 ctx 读写者。
+Update(g): if StopUploadAndJoin() != OK: return ERROR;
+           ctx.gain = g; Reset(ctx); return Start();
+```
+
+### G：UART 回环验收
+
+用户请求：“为 UART 驱动安排一次目标板回环测试，列出必要前置条件与检查项。”
+
+```text
+验收：115200、8N1 下发送给定字节序列并在 100 ms 内完整收回。
+固件构建、板卡版本及串口配置已记录；专用回环测试固件，无其它串口使用者。
+无 FPGA、传感器、测量流或滤波器；测试程序不修改持久配置。
+发送前清空 RX；用单调硬件定时器记录发送起点及接收完成，分辨率 1 us。
+```
+
+## 评审判据（不提供给被评代理）
+
+| 输入 | 必须识别的关键点 | 不应以此替代验收 |
+|---|---|---|
+| A | 移除停机丢失的同步保证，独立 Reset 路径，组合更新的原子边界；要求相关调度验证 | 只给 gain 加锁，或未经核对停止语义就认定采集静止 |
+| B | 先预热并建立有效输出，再观察重复应用后的连续性；恢复多余 Reset 应因目标断言失败 | 两个 OK、初始化失败的 RED，或强制完整变异框架 |
+| C | 单次/单流/混流按值类型核对准入和有效性；数值相等不能代替绑定身份 | 所有值共用 ready 拒绝 RAW，或只修 Status |
+| D | 缺失/空/非法/嵌套输入矩阵，两个入口的差异；响应、读回、未改字段及修订号；保存/应用/新结果分离 | ACK 即更新成功，给旧值贴新版本，或通用强制事务引擎 |
+| E | 模式不符使本次不能作为频率验收；故障分阶段判定；观测区间与时延不确定性；收尾未确认；DUT 和兼容方向限制 | 秒级轮询证明精确响应、finally 等于恢复、core 仿真替代 top/实机 |
+| F | 已有 stop/join 与单 owner 覆盖所需边界；按给定事实无需额外锁，实际工程需核对该实现及失败出口 | 因函数名含 Upload 就否认停止保证，或自动叠加锁/任务 |
+| G | 选择回环输入、串口配置、版本及计时证据；检查逐字节结果和真实计时边界 | 追问传感器绑定、FPGA 模式、滤波预热或不存在的轮询间隔 |
+
+可分别扩展 C 的恢复入口和当前请求错误原因、D 的成功应用后预热、E 的另一兼容方向，但每轮只改变需要比较的条件。题面给定的产品约定只用于该场景，不应变成所有项目的默认需求。
+
+## 验收记录
+
+每次保留实际加载路径、技能入口及相关参考的版本/内容指纹、输入代码/规范版本、原始输入和 AI 输出、评审结果、最小修复、实际验证及残余假设。区分亲自执行、审阅已有日志和静态推断；优化前后比较保持输入与评审标准一致，记录模型及宿主条件。
+
+上述场景的编写不代表已经执行或通过。没有实际记录时，只报告技能结构校验和已执行的工具测试，不宣称 AI 行为或实机可靠性已获证明。

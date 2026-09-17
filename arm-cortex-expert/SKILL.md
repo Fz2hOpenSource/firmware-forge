@@ -102,11 +102,22 @@ preserve bounded progress, resource ownership and honest hardware outcomes. Do n
 force this workflow onto unrelated tasks. If a companion is unavailable, handle
 the needed boundary from project evidence and state remaining gaps.
 
+Reassess routing when the task changes: field omission/clearing/merge rules,
+error responses, completion meaning or public start/recovery conditions need
+protocol-contract review; new test seams, fault scenarios or claims of regression
+coverage need test-strategy review. Load only the affected companion/reference,
+not all skills merely because the task began as a firmware fix.
+
 ## Output Contract
 
 For patches, prioritize code. Add only the short decision notes needed to explain the complexity tier, skipped complexity, upgrade trigger, verification, and residual risk.
 
 For diagnostic patches, also state the current hypothesis, the active change set, the observed result, and which experimental changes were retained or reverted. Do not silently carry an unsupported change into the next experiment.
+
+When handing off work or recovering a long session, keep a brief resume note:
+confirmed scope, active changes, resolved/open hypotheses, relevant evidence with
+source/build identity, and next steps/gaps. Distinguish executed checks, reviewed
+logs and inference. Reuse an adequate existing note; no extra report per reply.
 
 When giving a full design, include:
 

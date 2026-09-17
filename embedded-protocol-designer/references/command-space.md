@@ -11,6 +11,21 @@
   do not require one extra command per setting. Specify whether a returned value
   is requested, applied or observed, and its validity when those differ.
 
+## Configuration Completion
+
+If saving, applying and obtaining a new result can finish separately, define which
+stage the response acknowledges and how the remaining outcome is observed. A
+successful save does not imply that hardware is using it or that new valid data
+exists. Specify the visible result when persistence succeeds but application fails,
+and when application succeeds but output is still warming up. Existing queries and
+validity/revision fields may suffice; do not require three new commands or an
+asynchronous operation ledger for a synchronous setting.
+
+Readback must identify whether it reports stored settings, applied settings or
+measured output. A configuration revision attached to a result denotes what produced it,
+not merely the newest saved revision. Partial-update field rules belong in
+[frame-and-fields.md](frame-and-fields.md#structured-configuration-updates).
+
 ## Response Mapping
 
 - Define the response mapping as one rule plus explicit exceptions,
@@ -82,6 +97,10 @@ replies. State-not-allowed does not authorize automatic retries:
 The point of the third column: binary ok/fail hides which side must
 act. Parameter-error versus state-not-allowed versus storage-failure
 lead to completely different user actions.
+
+An error response describes this request's outcome. Do not substitute a stale
+global last-error value; historical diagnostics and current rejection reasons have
+different lifetimes even if they use the same error codes.
 
 ## Production and Identity Commands
 

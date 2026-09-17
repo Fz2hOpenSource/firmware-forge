@@ -69,9 +69,32 @@ build, not during integration.
 
 ## Per-Field Table Discipline
 
+For structured configuration updates, also use the update contract below; a type
+table alone does not define omission, clearing or merge behavior.
+
 Every frame layout ships a table: byte range, field name, type, and
 unit/scale. If any field cannot be given a type-and-unit row, its
 definition is not finished — do not publish around it.
+
+## Structured Configuration Updates
+
+When commands accept optional fields or partial objects, first recover the existing
+published semantics and compare all relevant save/update entry points. Do not
+impose "omitted means retain" on a replacement command or silently change released
+behavior. Define only input forms the encoding supports:
+
+| Input | Required decision |
+|---|---|
+| Field absent | Retain, default, or reject as required |
+| Valid value present | Which fields change and when the value becomes effective |
+| Empty array/string or null | Clear, special value, or reject; do not conflate them with absence |
+| Wrong type or out-of-range value | Reject whole request, or explicitly report defined partial handling |
+| Part of a nested object | Merge members or replace object; treatment of absent members |
+
+Specify revision behavior for a change, a no-op and a rejected request. Equivalent
+entry points must honor the same declared update semantics; intentional differences
+must be visible in their contracts. Validate response plus changed-field readback,
+preservation of untouched fields, and revision behavior, not ACK alone.
 
 ## Robustness Decisions
 

@@ -30,6 +30,16 @@ Read this reference for external SPI/QSPI flash, persisted settings or calibrati
 - Use idempotent request identifiers or expected revisions when repeated control messages could otherwise duplicate a create/update operation.
 - Separate stored schema version from runtime context revision and migrate or reject old records deterministically.
 
+For settings that also affect live measurement, distinguish three facts:
+persisted record, applied runtime configuration, and fresh valid results produced
+under that configuration. For example, saving revision B may succeed while the
+FPGA apply step fails: the stored record can be B while runtime remains at verified
+A (or is uncertain). Report those outcomes separately under the product contract;
+do not mark B active or stamp cached A results as B. After a successful apply, data
+may still be warming up. A hardware rollback alone does not validate the new
+logical context. Use existing status/revision mechanisms where sufficient, not a
+mandatory transaction engine.
+
 ## Verification
 
 - Test erase/program/read, 1→0 programming rules, page/sector boundaries, full storage, retries, CRC corruption, interrupted program, interrupted metadata commit, restart scan, sequence wrap, and schema migration.

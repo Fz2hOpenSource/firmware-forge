@@ -66,11 +66,32 @@ unrelated tasks do not need a sampling/upload pipeline or new diagnostics:
 
 ## Reconfiguration and State Continuity
 
+- When removing a stop, restart, wait or lock, or adding a shared-state call path (including a standalone reset), identify the synchronization guarantees the old path supplied implicitly. Recheck affected readers, writers and invariants before accepting the local change. Do not infer acquisition has stopped merely because upload stopped: verify the actual stop semantics and whether affected producers, ISR/DMA activity and in-flight work are quiescent. Preserve an existing stop/join mechanism when it supplies the required guarantee. Two individually protected calls do not by themselves make their combined transition atomic. Preserve the required boundary with the smallest suitable ownership/synchronization mechanism, not automatically a larger lock.
 - For changes that affect active hardware or data interpretation, define the transition explicitly: validate, quiesce affected producers when needed, drain or invalidate old work, apply and verify the configuration, then publish valid matching-generation data. Atomic unrelated settings need not stop the pipeline or introduce a transaction engine.
 - Tag queued samples, processed results, and stream configuration with enough generation information to reject stale data after a transition.
 - Define which state survives each event separately: TCP disconnect, stream stop/start, profile change, algorithm reset, peripheral recovery, software reset, and power cycle. Do not let accidental global state decide product behavior.
 - Preserve filter state only when sample timing, coefficients, units, calibration, and signal meaning remain compatible. Otherwise reset or transform state explicitly and expose warm-up/settle status.
+- Equal numeric conversion parameters do not establish the same sensor binding or configuration identity. Reusing state or cached results must also satisfy the project's identity, revision and validity contract; relabeling old data with the current generation does not make it fresh.
 - Aim to preserve the previous confirmed state or reach a verified stopped state. If neither can be confirmed, report hardware uncertainty, inhibit unsafe work and invoke the product's containment policy; never claim SAFE merely by assigning an enum. Do not continue as if partially updated hardware were verified.
+
+### Affected Public Paths
+
+When a change affects public availability or result validity, trace the consumers
+of that fact, not just the modified module. Use a small impact table for the paths
+that actually exist:
+
+| Consumer | Check against the current contract |
+|---|---|
+| Status query | Current configuration, availability and actual application state |
+| One-shot read | Result identity, revision and validity for the requested value kind |
+| Single-channel stream | Admission and ongoing validity after reconfiguration |
+| Mixed stream | Required whole-group/partial behavior when one source is unavailable |
+| Recovery entry | Required reapplication actually occurs; no stale no-op success |
+| Error response | Reason belongs to this request, not the previous operation |
+
+Consistency means one coherent contract, not one universal boolean. Raw input may
+remain available while calibrated engineering values are not. Inspect affected
+entry points without forcing a new shared framework or changing unrelated paths.
 
 ## Multi-Rate and Mixed-Source Pipelines
 

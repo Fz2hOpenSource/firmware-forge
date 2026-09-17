@@ -92,9 +92,9 @@ specifications govern platform facts; skill examples are not product requirement
 
 - Requirements, minimal start/stop, channel growth, state vs parameters →
   [requirements-and-growth.md](references/requirements-and-growth.md).
-- Frame layout, LEN, CRC, field encoding and scaling →
+- Frame layout, LEN, CRC, field encoding, scaling and partial configuration updates →
   [frame-and-fields.md](references/frame-and-fields.md).
-- Command organization, response mapping and error taxonomy →
+- Command organization, response mapping, save/apply/data completion and errors →
   [command-space.md](references/command-space.md).
 - State permissions, delivery semantics, retries, deadlines and disconnect →
   [state-and-timing.md](references/state-and-timing.md).
@@ -117,3 +117,8 @@ For a revision, lead with changed observable behavior and its impact. For a revi
 give evidence locations, trigger sequence, risk, minimum correction and validation.
 Separate declared behavior from implemented and tested behavior. Never claim that
 a well-formed state diagram proves runtime liveness or hardware safety.
+
+When handing off work or recovering a long session, keep a brief resume note:
+agreed contract, active changes, resolved/open questions, evidence versions and
+next steps/gaps. Distinguish implemented/tested behavior, reviewed artifacts and
+inference. Reuse an adequate existing note; no extra report per reply.

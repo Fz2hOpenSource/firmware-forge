@@ -205,6 +205,18 @@ sentences rather than a full document:
 Replay-type proposals additionally output the tolerance table and the
 baseline version they compare against.
 
+When reporting results, distinguish tests executed in this run from inspected
+existing logs, third-party reports and static inference. For executed tests retain
+the command, time/run identity, source/build configuration, DUT/layer, executed,
+passed, failed and skipped counts where available, and raw log location. Mark
+missing evidence explicitly; zero failures without an execution count is not proof
+of coverage. Host, target build, simulation and HIL results remain separate claims.
+
+When handing off work or recovering a long session, keep a brief resume note:
+test objective, active test changes, resolved/open hypotheses, evidence versions
+and provenance, and next checks/gaps. Reuse an adequate existing note; no extra
+report per reply.
+
 ## When Information Is Missing
 
 Ask only for facts that change the design:
