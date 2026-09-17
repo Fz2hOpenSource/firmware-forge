@@ -52,14 +52,16 @@ observed mismatch as a separate finding.
 
 For fault injection, use phase-specific criteria: healthy baseline, detected fault,
 required behavior during the fault, recovery after the scenario's recovery trigger,
-then a defined stable observation window. Loss of signal can be the expected injected event, not
-an unconditional test failure. Confirm the injection actually occurred.
+then a defined stable observation window. Loss of signal can be the expected
+injected event, not an unconditional test failure. Confirm the injection actually occurred.
 
 Disclose relevant resource ownership and side effects, such as an exclusive control
 connection, starting/stopping streams or changing modes/bindings where applicable.
 For state-changing tests, plan authorized cleanup, then verify and report its
 outcome. Executing a finally block is not evidence that configuration was restored;
-an unknown final device state remains an explicit result.
+an unknown final device state remains an explicit result. Limit restoration checks
+to state/resources the run could affect under its known behavior or stated risk;
+do not add a persistent-configuration audit to a test known not to modify it.
 
 ## Observation Resolution
 
@@ -67,11 +69,15 @@ For polled observations, report polling interval, request duration and timestamp
 basis, plus last normal / first abnormal and last abnormal / first recovered
 observations when available. For other measurement methods, report their actual
 time resolution and uncertainty instead of inventing polling parameters.
-With coherent instantaneous observations these bracket a transition; buffered data,
-communication delay and unsynchronized clocks require wider uncertainty or a stated
-limit on inference. Roughly one-second polling cannot establish a precise 2.000 s
-response. Keep specified deadlines, observed intervals and the maximum in this run
-separate; none alone establishes a universal bound.
+Before giving a physical-event interval, establish what each timestamp denotes
+(device sampling, request start or response receipt) and relevant bounds on data age,
+transport delay and clock offset. Coherent instantaneous samples can bracket a
+transition; bounded delays may allow a wider interval. Without that mapping, report
+only the observed status sequence, not a claimed event-time bound followed by a
+disclaimer. Recovery latency additionally needs the recovery trigger's time.
+Roughly one-second polling cannot establish a precise 2.000 s response. Keep
+specified deadlines, observed intervals and the maximum in this run separate;
+none alone establishes a universal bound.
 
 ## Target Scenarios
 
@@ -85,6 +91,10 @@ load/fault conditions, sample count, min/max/distribution, threshold traced to a
 requirement and instrumentation limitations. A cycle-counter result also needs
 counter availability, wrap and clock/sleep behavior considered. State whether a
 bound is analytic, model-derived or the maximum observed in the run.
+
+Choose repetition count and observation duration from the acceptance criterion and
+failure risk. Label exploratory counts as provisional; a round number is neither
+a universal minimum nor evidence of a statistical guarantee.
 
 Plan the remaining HIL work when equipment or evidence is unavailable. Do not mark
 unexecuted tests as passed; use connected equipment only within the user's actual

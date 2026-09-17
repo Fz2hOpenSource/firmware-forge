@@ -59,11 +59,14 @@ stale cached results and current-request error reasons where those paths exist.
 
 For partial updates, select absent, valid, empty/null, wrong-type, out-of-range and
 nested-partial inputs supported by the protocol. Assert response, changed-field
-readback, untouched-field preservation and revision behavior across relevant update
-entry points. Use the project's declared merge/replacement rules, not a universal
-retain-on-omission assumption. Where persistence and live application differ,
-exercise save success/apply failure and apply success/no fresh result yet; do not
-let one successful stage stand for all three.
+readback, contracted treatment of omitted fields and revision behavior across relevant update
+entry points. Derive expected values from the declared merge/replacement contract,
+independently of each implementation. An observed divergence should fail the test
+unless a specification or approved change permits it; characterization of current
+behavior is not acceptance of that behavior. Do not impose retain-on-omission on
+an explicitly specified replacement command. Where persistence and live application
+differ, exercise save success/apply failure and apply success/no fresh result yet;
+do not let one successful stage stand for all three.
 
 ## Keep Verification Proportional
 

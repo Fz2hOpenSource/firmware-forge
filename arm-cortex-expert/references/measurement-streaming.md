@@ -14,8 +14,8 @@ Read this reference for continuous acquisition, long-running upload, mixed ADC/F
 
 - Validate an entire requested configuration before changing hardware or application state.
 - For changes affecting active hardware or data interpretation, choose a verified application boundary: quiesce/drain when necessary, or use supported atomic/shadow configuration. Reject stale work by generation or another demonstrated isolation mechanism. An unrelated atomic parameter needs no stop/restart or new epoch.
-- Tag processed values with the measurement profile, source generation, context/calibration revision, and timestamp needed to prove they still match the active interpretation.
-- On failure, verify restoration or a stopped state before reporting it. If hardware effects cannot be confirmed, report uncertainty and follow containment/supervision policy; assigning SAFE or rolling back a software struct is insufficient. Preserve partial-effect evidence and reject unsafe new work.
+- Where processed values can outlive their configuration, retain enough identity/freshness information to associate them with the active interpretation. Use the profile, generation, calibration revision or timestamp actually needed; proven invalidation/ownership can avoid extra metadata.
+- Report operation failure without requiring recovery to succeed first. Claim restoration or a stopped state only when verified. If hardware effects cannot be confirmed within the allowed budget, report failure with hardware uncertainty and follow containment/supervision policy; assigning SAFE or rolling back a software struct is insufficient. Preserve partial-effect evidence and reject unsafe new work.
 
 ## Rates and Capacity
 

@@ -15,7 +15,7 @@ Read this reference for filtering, decimation, selectable output rates, anomaly 
 - Validate fixed coefficients against the implementation sign convention and numeric precision; preserve a host-side frequency/step response test when coefficients are product-critical.
 - A narrow notch is appropriate only when interference frequency is stable. Use measured frequency drift to choose center and bandwidth, and report attenuation of nearby wanted signals.
 - Preserve runtime state only when timing, coefficients, units, calibration, and signal meaning are compatible. Define reset, transform, or inherited behavior for each transition.
-- Do not hide startup transients as random invalid data. Expose settle/readiness so callers can distinguish warm-up from hardware failure.
+- If startup transients make output temporarily invalid, distinguish that condition from hardware failure through the existing readiness or output-availability contract. Do not infer a settling interval merely from a Reset call or add new flags when existing behavior already expresses validity.
 
 ## Noise, Drift, Outliers, and Steps
 

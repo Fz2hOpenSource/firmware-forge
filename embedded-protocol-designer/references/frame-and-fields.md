@@ -92,9 +92,17 @@ behavior. Define only input forms the encoding supports:
 | Part of a nested object | Merge members or replace object; treatment of absent members |
 
 Specify revision behavior for a change, a no-op and a rejected request. Equivalent
-entry points must honor the same declared update semantics; intentional differences
-must be visible in their contracts. Validate response plus changed-field readback,
-preservation of untouched fields, and revision behavior, not ACK alone.
+entry points must honor the same declared update semantics. Treat different code
+paths as implementation evidence, not authorization for different contracts: an
+exception needs a project specification or an explicitly approved contract change.
+If both entries promise to retain omitted fields, default-filling one is a defect,
+not an exception to legitimize by documenting it. Conversely, preserve an explicitly
+defined replacement command's omission/default rules.
+
+Validate response plus changed-field readback, preservation of untouched fields
+where promised, and revision behavior, not ACK alone. An unchanged stored revision
+does not by itself prove retry safety; application side effects and intervening
+updates still follow the command's retry/concurrency contract.
 
 ## Robustness Decisions
 

@@ -2,6 +2,31 @@
 
 记录各版本面向使用者的变化。当前使用阶段性版本编号，兼容性以每版迁移说明为准；版本约定见 [贡献指南](CONTRIBUTING.md)。
 
+## V1.1.1 — 技能规则与行为验收修订
+
+版本准备日期：2026-09-17。变更范围：`V1.1.0` 之后的技能与文档修改。
+
+### 改进与修正
+
+- 固件技能补充同步依赖复核与跨入口一致性检查：同步须覆盖读写双方和在途访问，不仅保护写端；保留已有有效的停止与等待机制。
+- 代次信息、预热状态与 HIL 前置条件按实际风险和机制选择，避免把测量项目经验变成所有任务的强制清单。
+- 明确保存、运行态应用与新结果有效性的区别；操作失败可连同硬件状态不确定一并报告，不以恢复成功为报错前提。
+- 协议与测试技能明确部分更新、空值、非法值和整体替换的契约边界；不能根据实现差异反推合法例外，测试预期应来自已声明契约。
+- 强化回归测试的前置状态与定向反证、时序观测的证据边界，以及验证来源和条件化交接要求。
+- 增加 A–I 行为验收输入、契约配对与同步修法案例，分开记录核心识别、修法、证据及额外工作量。
+
+### 兼容性与验证范围
+
+- 本版仅修订技能指令与文档，不修改工具实现、安装器、DSH 配置或构建/烧录命令接口；无新增命令迁移要求。
+- 仓库结构校验、三个技能的基础校验及差异格式检查通过；行为案例仅是复测材料，不等于已通过的固件测试。
+- 本地探索性行为试跑仍发现契约执行偏差和附带技术解释错误；样本少、模型条件未完全固定且无同步旧版/无技能对照，不宣称行为稳定性、泛化能力或修订收益已获证明。原始试跑记录未随版本纳入 Git。
+- 本轮未新增真实宿主加载、UV4 构建、目标烧录或实机验证，也未重跑 V1.1.0 的工具测试；历史结果仍只适用于其记录范围。
+- 更新技能前按 [使用指南](docs/workbench-usage.md) 比较并备份安装副本，保留宿主扩展与不同工具实现。
+
+### English summary
+
+This documentation-only patch clarifies synchronization coverage, configuration-update contracts, result validity, evidence limits and conditional handoffs. It adds paired behavior-review scenarios without changing tools or host command interfaces. Structural checks pass; exploratory agent runs still show errors and do not establish reliable behavior, generalization or improvement over a baseline. No new live-host or hardware validation is claimed.
+
 ## V1.1.0 — 完善嵌入式开发技能与工具
 
 版本准备日期：2026-09-10。变更范围：`V1.0.0` 之后的提交。
